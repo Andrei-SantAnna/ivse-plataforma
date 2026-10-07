@@ -13,47 +13,89 @@ import 'leaflet/dist/leaflet.css';
 
 import api from '../services/api';
 
+
 const Mapa = () => {
 
+  // ============================================================
+  // ESTADOS
+  // ============================================================
+
   const [municipios, setMunicipios] = useState([]);
+
+  const [analises, setAnalises] = useState([]);
+
+  const [analiseSelecionada, setAnaliseSelecionada] = useState('');
+
   const [carregando, setCarregando] = useState(true);
+
+  const [carregandoMapa, setCarregandoMapa] = useState(false);
+
   const [erro, setErro] = useState(null);
+
 
   // Centro aproximado da Bahia
   const posicaoBahia = [-12.9714, -38.5014];
 
 
   // ============================================================
-  // CARREGAR MUNICÍPIOS
+  // CARREGAR HISTÓRICO DE ANÁLISES
   // ============================================================
 
   useEffect(() => {
 
-    const carregarDadosMapa = async () => {
+    const carregarAnalises = async () => {
 
       try {
 
         setCarregando(true);
+
         setErro(null);
 
-        const resposta = await api.get('/municipios');
+        const resposta = await api.get('/topsis/analises');
+
+        const listaAnalises = resposta.data;
 
         console.log(
-          'DADOS DO MAPA RECEBIDOS:',
-          resposta.data
+          'ANÁLISES RECEBIDAS:',
+          listaAnalises
         );
 
-        setMunicipios(resposta.data);
+        setAnalises(listaAnalises);
+
+
+        // ------------------------------------------------------
+        // Selecionar automaticamente a análise mais recente
+        // ------------------------------------------------------
+
+        if (listaAnalises.length > 0) {
+
+          setAnaliseSelecionada(
+            String(listaAnalises[0].id)
+          );
+
+        } else {
+
+          // Caso ainda não exista nenhuma análise,
+          // carrega os municípios sem resultados TOPSIS.
+
+          const respostaMunicipios =
+            await api.get('/municipios');
+
+          setMunicipios(
+            respostaMunicipios.data
+          );
+
+        }
 
       } catch (erro) {
 
         console.error(
-          'Erro ao carregar dados geográficos para o mapa:',
+          'Erro ao carregar histórico de análises:',
           erro
         );
 
         setErro(
-          'Não foi possível carregar os dados do mapa.'
+          'Não foi possível carregar o histórico de análises.'
         );
 
       } finally {
@@ -64,9 +106,82 @@ const Mapa = () => {
 
     };
 
-    carregarDadosMapa();
+
+    carregarAnalises();
 
   }, []);
+
+
+  // ============================================================
+  // CARREGAR MUNICÍPIOS DA ANÁLISE SELECIONADA
+  // ============================================================
+
+  useEffect(() => {
+
+    if (!analiseSelecionada) {
+      return;
+    }
+
+
+    const carregarDadosMapa = async () => {
+
+      try {
+
+        setCarregandoMapa(true);
+
+        setErro(null);
+
+
+        const resposta = await api.get(
+          `/municipios?analise_id=${analiseSelecionada}`
+        );
+
+
+        console.log(
+          `DADOS DA ANÁLISE ${analiseSelecionada}:`,
+          resposta.data
+        );
+
+
+        setMunicipios(
+          resposta.data
+        );
+
+
+      } catch (erro) {
+
+        console.error(
+          'Erro ao carregar dados geográficos:',
+          erro
+        );
+
+        setErro(
+          'Não foi possível carregar os dados da análise selecionada.'
+        );
+
+      } finally {
+
+        setCarregandoMapa(false);
+
+      }
+
+    };
+
+
+    carregarDadosMapa();
+
+  }, [analiseSelecionada]);
+
+
+  // ============================================================
+  // ANÁLISE ATUAL
+  // ============================================================
+
+  const analiseAtual = analises.find(
+    analise =>
+      Number(analise.id) ===
+      Number(analiseSelecionada)
+  );
 
 
   // ============================================================
@@ -83,23 +198,29 @@ const Mapa = () => {
       return '#9CA3AF';
     }
 
+
     const valor = Number(score);
+
 
     if (valor < 0.20) {
       return '#22C55E';
     }
 
+
     if (valor < 0.40) {
       return '#84CC16';
     }
+
 
     if (valor < 0.60) {
       return '#EAB308';
     }
 
+
     if (valor < 0.80) {
       return '#F97316';
     }
+
 
     return '#EF4444';
 
@@ -120,23 +241,29 @@ const Mapa = () => {
       return 'Não calculado';
     }
 
+
     const valor = Number(score);
+
 
     if (valor < 0.20) {
       return 'Muito baixa';
     }
 
+
     if (valor < 0.40) {
       return 'Baixa';
     }
+
 
     if (valor < 0.60) {
       return 'Moderada';
     }
 
+
     if (valor < 0.80) {
       return 'Alta';
     }
+
 
     return 'Muito alta';
 
@@ -157,6 +284,7 @@ const Mapa = () => {
       return 'Não calculado';
     }
 
+
     return Number(score)
       .toFixed(4)
       .replace('.', ',');
@@ -165,14 +293,40 @@ const Mapa = () => {
 
 
   // ============================================================
+  // FORMATAR DATA
+  // ============================================================
+
+  const formatarData = (data) => {
+
+    if (!data) {
+      return '-';
+    }
+
+
+    return new Date(data).toLocaleString(
+      'pt-BR',
+      {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }
+    );
+
+  };
+
+
+  // ============================================================
   // MUNICÍPIOS COM TOPSIS
   // ============================================================
 
-  const municipiosComAnalise = municipios.filter(
-    municipio =>
-      municipio.ivse_score !== null &&
-      municipio.ivse_score !== undefined
-  ).length;
+  const municipiosComAnalise =
+    municipios.filter(
+      municipio =>
+        municipio.ivse_score !== null &&
+        municipio.ivse_score !== undefined
+    ).length;
 
 
   // ============================================================
@@ -180,11 +334,12 @@ const Mapa = () => {
   // ============================================================
 
   const municipiosSemAnalise =
-    municipios.length - municipiosComAnalise;
+    municipios.length -
+    municipiosComAnalise;
 
 
   // ============================================================
-  // LOADING
+  // LOADING INICIAL
   // ============================================================
 
   if (carregando) {
@@ -206,7 +361,7 @@ const Mapa = () => {
         >
 
           <p className="text-gray-500">
-            Carregando mapa dos municípios...
+            Carregando histórico de análises...
           </p>
 
         </div>
@@ -222,7 +377,7 @@ const Mapa = () => {
   // ERRO
   // ============================================================
 
-  if (erro) {
+  if (erro && municipios.length === 0) {
 
     return (
 
@@ -265,6 +420,7 @@ const Mapa = () => {
       "
     >
 
+
       {/* ====================================================== */}
       {/* CABEÇALHO */}
       {/* ====================================================== */}
@@ -280,6 +436,7 @@ const Mapa = () => {
         "
       >
 
+
         <div>
 
           <h1
@@ -291,6 +448,7 @@ const Mapa = () => {
           >
             Mapa de Vulnerabilidade
           </h1>
+
 
           <p
             className="
@@ -317,6 +475,7 @@ const Mapa = () => {
             flex-wrap
           "
         >
+
 
           <div
             className="
@@ -395,6 +554,257 @@ const Mapa = () => {
 
 
       {/* ====================================================== */}
+      {/* SELETOR DA ANÁLISE */}
+      {/* ====================================================== */}
+
+      <div
+        className="
+          bg-white
+          border
+          border-gray-100
+          shadow-sm
+          rounded-xl
+          px-4
+          py-3
+          mb-4
+          flex
+          items-center
+          justify-between
+          gap-4
+          flex-wrap
+        "
+      >
+
+
+        <div>
+
+          <label
+            htmlFor="analise-mapa"
+            className="
+              block
+              text-xs
+              font-semibold
+              text-gray-500
+              uppercase
+              tracking-wide
+              mb-1
+            "
+          >
+            Análise exibida no mapa
+          </label>
+
+
+          {analises.length > 0 ? (
+
+            <select
+              id="analise-mapa"
+
+              value={analiseSelecionada}
+
+              onChange={(event) =>
+                setAnaliseSelecionada(
+                  event.target.value
+                )
+              }
+
+              disabled={carregandoMapa}
+
+              className="
+                min-w-[320px]
+                max-w-full
+                border
+                border-gray-300
+                bg-white
+                text-gray-700
+                text-sm
+                rounded-lg
+                px-3
+                py-2
+                outline-none
+                focus:ring-2
+                focus:ring-blue-500
+                focus:border-blue-500
+                disabled:opacity-60
+              "
+            >
+
+              {analises.map(
+                analise => (
+
+                  <option
+                    key={analise.id}
+                    value={analise.id}
+                  >
+
+                    {analise.titulo}
+                    {' — '}
+                    {analise.ano_referencia || 'Ano não informado'}
+                    {' — '}
+                    {analise.total_municipios} municípios
+
+                  </option>
+
+                )
+              )}
+
+            </select>
+
+          ) : (
+
+            <p className="text-sm text-gray-500">
+
+              Nenhuma análise TOPSIS disponível.
+
+            </p>
+
+          )}
+
+        </div>
+
+
+        {/* ==================================================== */}
+        {/* DADOS DA ANÁLISE SELECIONADA */}
+        {/* ==================================================== */}
+
+        {analiseAtual && (
+
+          <div
+            className="
+              flex
+              gap-6
+              flex-wrap
+              text-sm
+            "
+          >
+
+            <div>
+
+              <div
+                className="
+                  text-xs
+                  text-gray-400
+                  mb-1
+                "
+              >
+                Ano de referência
+              </div>
+
+              <strong
+                className="
+                  text-gray-700
+                "
+              >
+                {analiseAtual.ano_referencia || '-'}
+              </strong>
+
+            </div>
+
+
+            <div>
+
+              <div
+                className="
+                  text-xs
+                  text-gray-400
+                  mb-1
+                "
+              >
+                Municípios
+              </div>
+
+              <strong
+                className="
+                  text-gray-700
+                "
+              >
+                {analiseAtual.total_municipios}
+              </strong>
+
+            </div>
+
+
+            <div>
+
+              <div
+                className="
+                  text-xs
+                  text-gray-400
+                  mb-1
+                "
+              >
+                Executada em
+              </div>
+
+              <strong
+                className="
+                  text-gray-700
+                "
+              >
+                {formatarData(
+                  analiseAtual.data_execucao
+                )}
+              </strong>
+
+            </div>
+
+          </div>
+
+        )}
+
+      </div>
+
+
+      {/* ====================================================== */}
+      {/* AVISO DE CARREGAMENTO DA ANÁLISE */}
+      {/* ====================================================== */}
+
+      {carregandoMapa && (
+
+        <div
+          className="
+            mb-3
+            bg-blue-50
+            border
+            border-blue-100
+            text-blue-700
+            rounded-lg
+            px-4
+            py-2
+            text-sm
+          "
+        >
+          Carregando resultados da análise selecionada...
+        </div>
+
+      )}
+
+
+      {/* ====================================================== */}
+      {/* ERRO NÃO BLOQUEANTE */}
+      {/* ====================================================== */}
+
+      {erro && municipios.length > 0 && (
+
+        <div
+          className="
+            mb-3
+            bg-red-50
+            border
+            border-red-200
+            text-red-700
+            rounded-lg
+            px-4
+            py-2
+            text-sm
+          "
+        >
+          {erro}
+        </div>
+
+      )}
+
+
+      {/* ====================================================== */}
       {/* MAPA */}
       {/* ====================================================== */}
 
@@ -412,6 +822,7 @@ const Mapa = () => {
         "
       >
 
+
         <MapContainer
 
           center={posicaoBahia}
@@ -426,6 +837,7 @@ const Mapa = () => {
           }}
 
         >
+
 
           <TileLayer
 
@@ -442,14 +854,15 @@ const Mapa = () => {
 
           {municipios.map((mun) => {
 
+
             const latitude =
               Number(mun.latitude);
+
 
             const longitude =
               Number(mun.longitude);
 
 
-            // Coordenada inexistente ou inválida
             if (
               !Number.isFinite(latitude) ||
               !Number.isFinite(longitude)
@@ -476,8 +889,7 @@ const Mapa = () => {
               <CircleMarker
 
                 key={
-                  mun.codigo_ibge ||
-                  mun.id
+                  `${analiseSelecionada}-${mun.codigo_ibge || mun.id}`
                 }
 
                 center={[
@@ -496,7 +908,13 @@ const Mapa = () => {
 
               >
 
+
+                {/* ================================================= */}
+                {/* POPUP */}
+                {/* ================================================= */}
+
                 <Popup>
+
 
                   <div
                     style={{
@@ -505,7 +923,9 @@ const Mapa = () => {
                     }}
                   >
 
+
                     {/* FAIXA COLORIDA */}
+
                     <div
                       style={{
                         height: '7px',
@@ -521,7 +941,9 @@ const Mapa = () => {
                       }}
                     >
 
+
                       {/* MUNICÍPIO */}
+
                       <div
                         style={{
                           marginBottom: '4px'
@@ -541,6 +963,7 @@ const Mapa = () => {
 
 
                       {/* UF + IBGE */}
+
                       <div
                         style={{
                           fontSize: '11px',
@@ -552,13 +975,16 @@ const Mapa = () => {
                       </div>
 
 
-                      {/* VERIFICA SE EXISTE TOPSIS */}
+                      {/* TOPSIS */}
+
                       {mun.ivse_score !== null &&
                       mun.ivse_score !== undefined ? (
 
                         <>
 
+
                           {/* IVSE */}
+
                           <div
                             style={{
                               backgroundColor: '#F9FAFB',
@@ -568,6 +994,7 @@ const Mapa = () => {
                               marginBottom: '10px'
                             }}
                           >
+
 
                             <div
                               style={{
@@ -581,6 +1008,7 @@ const Mapa = () => {
                               Índice IVSE
                             </div>
 
+
                             <div
                               style={{
                                 fontSize: '24px',
@@ -589,13 +1017,16 @@ const Mapa = () => {
                                 marginTop: '2px'
                               }}
                             >
-                              {formatarScore(mun.ivse_score)}
+                              {formatarScore(
+                                mun.ivse_score
+                              )}
                             </div>
 
                           </div>
 
 
                           {/* RANKING */}
+
                           <div
                             style={{
                               display: 'flex',
@@ -606,6 +1037,7 @@ const Mapa = () => {
                               borderBottom: '1px solid #E5E7EB'
                             }}
                           >
+
 
                             <span
                               style={{
@@ -632,6 +1064,7 @@ const Mapa = () => {
 
 
                           {/* VULNERABILIDADE */}
+
                           <div
                             style={{
                               display: 'flex',
@@ -639,6 +1072,7 @@ const Mapa = () => {
                               alignItems: 'center'
                             }}
                           >
+
 
                             <span
                               style={{
@@ -665,6 +1099,27 @@ const Mapa = () => {
 
                           </div>
 
+
+                          {/* ANÁLISE */}
+
+                          {analiseAtual && (
+
+                            <div
+                              style={{
+                                marginTop: '12px',
+                                paddingTop: '10px',
+                                borderTop: '1px solid #E5E7EB',
+                                fontSize: '10px',
+                                color: '#9CA3AF'
+                              }}
+                            >
+
+                              Análise: {analiseAtual.titulo}
+
+                            </div>
+
+                          )}
+
                         </>
 
                       ) : (
@@ -679,7 +1134,10 @@ const Mapa = () => {
                             textAlign: 'center'
                           }}
                         >
-                          Município ainda sem resultado TOPSIS.
+
+                          Município sem resultado
+                          na análise selecionada.
+
                         </div>
 
                       )}
@@ -704,7 +1162,6 @@ const Mapa = () => {
         {/* ==================================================== */}
 
         <div
-
           className="
             absolute
             bottom-5
@@ -717,8 +1174,8 @@ const Mapa = () => {
             border-gray-200
             p-3
           "
-
         >
+
 
           <div
             className="
@@ -728,9 +1185,7 @@ const Mapa = () => {
               mb-2
             "
           >
-
             Vulnerabilidade
-
           </div>
 
 
@@ -739,25 +1194,30 @@ const Mapa = () => {
             texto="Muito baixa"
           />
 
+
           <LegendaItem
             cor="#84CC16"
             texto="Baixa"
           />
+
 
           <LegendaItem
             cor="#EAB308"
             texto="Moderada"
           />
 
+
           <LegendaItem
             cor="#F97316"
             texto="Alta"
           />
 
+
           <LegendaItem
             cor="#EF4444"
             texto="Muito alta"
           />
+
 
           <LegendaItem
             cor="#9CA3AF"
@@ -797,8 +1257,8 @@ const LegendaItem = ({
       "
     >
 
-      <span
 
+      <span
         style={{
           width: '10px',
           height: '10px',
@@ -806,8 +1266,8 @@ const LegendaItem = ({
           backgroundColor: cor,
           display: 'inline-block'
         }}
-
       />
+
 
       {texto}
 
