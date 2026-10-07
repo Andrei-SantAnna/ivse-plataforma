@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgis/postgis:15-3.4-alpine
+    container_name: ivse_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-senha_secreta}
+      POSTGRES_DB: ${DB_NAME:-ivse_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ivse_api
+    restart: unless-stopped
+    environment:
+      - DB_HOST=db # Aponta para o container do banco acima
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-senha_secreta}
+      - DB_NAME=${DB_NAME:-ivse_db}
+      - PORT=${PORT:-3000}
+    ports:
+      - "3000:3000"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./src/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+      # Sincroniza seus arquivos locais com o container (Hot Reload)
+      - .:/usr/src/app
+      # Isola a pasta node_modules do container da máquina local
+      - /usr/src/app/node_modules
+    depends_on:
+      - db
+    # Executa o nodemon para reiniciar o servidor ao salvar os arquivos
+    command: npx nodemon src/server.js
+
+volumes:
+  # Cria um volume persistente para os dados não sumirem ao desligar o container
+  postgres_data:
