@@ -6,7 +6,7 @@ O sistema permite cadastrar municípios e indicadores, associar valores aos muni
 
 ---
 
-## 🎯 Objetivo
+##  Objetivo
 
 Desenvolver uma plataforma computacional capaz de medir indicadores multicritério relacionados à vulnerabilidade social energética, permitindo:
 
@@ -21,7 +21,7 @@ Desenvolver uma plataforma computacional capaz de medir indicadores multicritér
 
 ---
 
-## 🧠 Método TOPSIS
+##  Método TOPSIS
 
 O TOPSIS é utilizado para classificar alternativas com base na proximidade de uma solução ideal positiva e no afastamento de uma solução ideal negativa.
 
@@ -56,7 +56,7 @@ Cada critério pode ser definido como:
 
 ---
 
-## 🗺️ Área de estudo
+##  Área de estudo
 
 A versão atual da plataforma trabalha com os **417 municípios do estado da Bahia**.
 
@@ -64,7 +64,7 @@ Os municípios são identificados pelo **código IBGE** e possuem coordenadas ge
 
 ---
 
-## ✨ Funcionalidades implementadas
+##  Funcionalidades implementadas
 
 ### Municípios
 
@@ -139,7 +139,7 @@ Escala atualmente utilizada:
 
 ---
 
-## 🧩 Requisitos Funcionais
+##  Requisitos Funcionais
 
 | ID | Requisito | Situação |
 |---|---|---|
@@ -167,7 +167,7 @@ Escala atualmente utilizada:
 
 ---
 
-## 🏗️ Arquitetura
+##  Arquitetura
 
 ```text
 ┌───────────────────────────────┐
@@ -199,7 +199,7 @@ Escala atualmente utilizada:
 
 ---
 
-## 🛠️ Tecnologias
+##  Tecnologias
 
 ### Frontend
 
@@ -229,7 +229,7 @@ Escala atualmente utilizada:
 
 ---
 
-## 📁 Estrutura geral
+##  Estrutura geral
 
 ```text
 projeto/
@@ -269,7 +269,7 @@ projeto/
 
 ---
 
-## 🗄️ Banco de dados
+##  Banco de dados
 
 Principais tabelas:
 
@@ -327,7 +327,7 @@ Principais tabelas:
 
 ---
 
-## 🌐 Principais endpoints
+##  Principais endpoints
 
 ### Municípios
 
@@ -355,7 +355,7 @@ GET /api/topsis/analises
 
 ---
 
-## 🚀 Instalação
+##  Instalação
 
 ### Pré-requisitos
 
@@ -408,7 +408,7 @@ docker compose down
 
 ---
 
-## 🌍 Sincronização dos municípios
+##  Sincronização dos municípios
 
 A plataforma possui scripts auxiliares para cadastro dos municípios da Bahia.
 
@@ -428,7 +428,7 @@ O processo utiliza o código IBGE como chave de associação.
 
 ---
 
-## 📊 Executando uma análise TOPSIS
+##  Executando uma análise TOPSIS
 
 Na tela **Simulação TOPSIS**:
 
@@ -452,7 +452,7 @@ O sistema irá:
 
 ---
 
-## 🗺️ Visualização no mapa
+##  Visualização no mapa
 
 Na tela **Mapa de Vulnerabilidade** é possível:
 
@@ -466,7 +466,7 @@ Na tela **Mapa de Vulnerabilidade** é possível:
 
 ---
 
-## ✅ Validações já implementadas
+##  Validações já implementadas
 
 Entre as validações atuais estão:
 
@@ -488,7 +488,7 @@ Entre as validações atuais estão:
 
 ---
 
-## 🧪 Testes
+##  Testes
 
 A suíte automatizada deverá contemplar:
 
@@ -504,7 +504,7 @@ A suíte automatizada deverá contemplar:
 
 ---
 
-## 📌 Próximas etapas
+##  Próximas etapas
 
 Funcionalidades ainda em desenvolvimento:
 
@@ -522,7 +522,7 @@ Funcionalidades ainda em desenvolvimento:
 
 ---
 
-## 📚 Documentação acadêmica
+##  Documentação acadêmica
 
 O projeto deverá possuir, além deste README:
 
@@ -537,15 +537,15 @@ O projeto deverá possuir, além deste README:
 
 ---
 
-## 📖 Norma de referência
+##  Norma de referência
 
 O desenvolvimento do projeto considera os processos de ciclo de vida de software definidos pela **ISO/IEC 12207**, incluindo atividades relacionadas a desenvolvimento, operação e manutenção.
 
 ---
 
-## 👨‍💻 Projeto acadêmico
+##  Projeto acadêmico
 
-Projeto desenvolvido no curso de **Engenharia da Computação**.
+Projeto desenvolvido no curso de **Engenharia da Computação** por Andrei Boulhosa de Sant'Anna.
 
 ---
 
