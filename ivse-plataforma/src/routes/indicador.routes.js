@@ -5,25 +5,32 @@ const router = express.Router();
 const indicadorController =
   require('../controllers/indicador.controller');
 
+const upload =
+  require('../middlewares/upload');
 
-// Listar indicadores
+
 router.get(
   '/',
   indicadorController.listar
 );
 
 
-// Cadastrar indicador
 router.post(
   '/',
   indicadorController.criar
 );
 
 
-// Registrar valor para município
 router.post(
   '/valores',
   indicadorController.adicionarValor
+);
+
+
+router.post(
+  '/importar-csv',
+  upload.single('arquivo'),
+  indicadorController.importarCSV
 );
 
 

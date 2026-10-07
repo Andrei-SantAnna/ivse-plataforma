@@ -1,6 +1,8 @@
 // src/controllers/indicador.controller.js
 
 const db = require('../config/database');
+const csv = require('csv-parser');
+const { Readable } = require('stream');
 
 
 // ============================================================
@@ -429,6 +431,461 @@ exports.adicionarValor = async (req, res) => {
     return res.status(500).json({
       erro:
         'Falha interna ao registrar o valor do indicador.'
+    });
+
+  }
+
+};
+exports.importarCSV = async (req, res) => {
+
+  try {
+
+    if (!req.file) {
+      return res.status(400).json({
+        erro: 'Nenhum arquivo CSV foi enviado.'
+      });
+    }
+
+
+    const linhas = [];
+
+    const stream = Readable.from(
+      req.file.buffer.toString('utf-8')
+    );
+
+
+    await new Promise((resolve, reject) => {
+
+      stream
+        .pipe(csv())
+        .on('data', (linha) => {
+
+  const possuiConteudo =
+    Object.values(linha).some(
+      valor =>
+        String(valor ?? '').trim() !== ''
+    );
+
+  if (possuiConteudo) {
+    linhas.push(linha);
+  }
+
+})
+        .on('end', resolve)
+        .on('error', reject);
+
+    });
+
+
+    if (linhas.length === 0) {
+
+      return res.status(400).json({
+        erro: 'O arquivo CSV está vazio.'
+      });
+
+    }
+
+
+    const colunasObrigatorias = [
+      'codigo_ibge',
+      'codigo_indicador',
+      'valor',
+      'ano_referencia'
+    ];
+
+
+    const primeiraLinha = linhas[0];
+
+
+    const colunasFaltando =
+      colunasObrigatorias.filter(
+        coluna =>
+          !Object.prototype.hasOwnProperty.call(
+            primeiraLinha,
+            coluna
+          )
+      );
+
+
+    if (colunasFaltando.length > 0) {
+
+      return res.status(400).json({
+
+        erro:
+          'O CSV não possui todas as colunas obrigatórias.',
+
+        colunas_faltando:
+          colunasFaltando,
+
+        formato_esperado:
+          'codigo_ibge,codigo_indicador,valor,ano_referencia'
+
+      });
+
+    }
+
+
+    const resumo = {
+
+      total_linhas:
+        linhas.length,
+
+      inseridos: 0,
+
+      atualizados: 0,
+
+      rejeitados: 0,
+
+      erros: []
+
+    };
+
+
+    for (
+      let i = 0;
+      i < linhas.length;
+      i++
+    ) {
+
+      const linha =
+        linhas[i];
+
+
+      const numeroLinha =
+        i + 2;
+
+
+      const codigoIbge =
+        String(
+          linha.codigo_ibge || ''
+        ).trim();
+
+
+      const codigoIndicador =
+        String(
+          linha.codigo_indicador || ''
+        )
+          .trim()
+          .toUpperCase();
+
+
+      const valorTexto =
+        String(
+          linha.valor || ''
+        )
+          .trim()
+          .replace(',', '.');
+
+
+      const anoTexto =
+        String(
+          linha.ano_referencia || ''
+        ).trim();
+
+
+      const valor =
+        Number(
+          valorTexto
+        );
+
+
+      const ano =
+        Number(
+          anoTexto
+        );
+
+
+      // ======================================================
+      // CAMPOS OBRIGATÓRIOS
+      // ======================================================
+
+      if (
+        !codigoIbge ||
+        !codigoIndicador ||
+        valorTexto === '' ||
+        anoTexto === ''
+      ) {
+
+        resumo.rejeitados++;
+
+
+        resumo.erros.push({
+
+          linha:
+            numeroLinha,
+
+          motivo:
+            'Existem campos obrigatórios vazios.'
+
+        });
+
+
+        continue;
+
+      }
+
+
+      // ======================================================
+      // VALOR
+      // ======================================================
+
+      if (
+        !Number.isFinite(valor)
+      ) {
+
+        resumo.rejeitados++;
+
+
+        resumo.erros.push({
+
+          linha:
+            numeroLinha,
+
+          motivo:
+            `Valor inválido: ${linha.valor}`
+
+        });
+
+
+        continue;
+
+      }
+
+
+      // ======================================================
+      // ANO
+      // ======================================================
+
+      if (
+        !Number.isInteger(ano) ||
+        ano < 2000 ||
+        ano > 2100
+      ) {
+
+        resumo.rejeitados++;
+
+
+        resumo.erros.push({
+
+          linha:
+            numeroLinha,
+
+          motivo:
+            `Ano de referência inválido: ${linha.ano_referencia}`
+
+        });
+
+
+        continue;
+
+      }
+
+
+      // ======================================================
+      // MUNICÍPIO
+      // ======================================================
+
+      const municipioResult =
+        await db.query(
+          `
+          SELECT id
+          FROM municipios
+          WHERE codigo_ibge = $1
+          `,
+          [
+            codigoIbge
+          ]
+        );
+
+
+      if (
+        municipioResult.rows.length === 0
+      ) {
+
+        resumo.rejeitados++;
+
+
+        resumo.erros.push({
+
+          linha:
+            numeroLinha,
+
+          motivo:
+            `Município com código IBGE ${codigoIbge} não encontrado.`
+
+        });
+
+
+        continue;
+
+      }
+
+
+      // ======================================================
+      // INDICADOR
+      // ======================================================
+
+      const indicadorResult =
+        await db.query(
+          `
+          SELECT id
+          FROM indicadores
+          WHERE UPPER(codigo) = $1
+          `,
+          [
+            codigoIndicador
+          ]
+        );
+
+
+      if (
+        indicadorResult.rows.length === 0
+      ) {
+
+        resumo.rejeitados++;
+
+
+        resumo.erros.push({
+
+          linha:
+            numeroLinha,
+
+          motivo:
+            `Indicador ${codigoIndicador} não encontrado.`
+
+        });
+
+
+        continue;
+
+      }
+
+
+      const municipioId =
+        municipioResult.rows[0].id;
+
+
+      const indicadorId =
+        indicadorResult.rows[0].id;
+
+
+      // ======================================================
+      // VERIFICAR SE JÁ EXISTE
+      // ======================================================
+
+      const existenteResult =
+        await db.query(
+          `
+          SELECT id
+          FROM valores_indicadores
+          WHERE municipio_id = $1
+            AND indicador_id = $2
+            AND ano_referencia = $3
+          `,
+          [
+            municipioId,
+            indicadorId,
+            ano
+          ]
+        );
+
+
+      // ======================================================
+      // UPDATE
+      // ======================================================
+
+      if (
+        existenteResult.rows.length > 0
+      ) {
+
+        await db.query(
+          `
+          UPDATE valores_indicadores
+
+          SET valor = $1
+
+          WHERE municipio_id = $2
+            AND indicador_id = $3
+            AND ano_referencia = $4
+          `,
+          [
+            valor,
+            municipioId,
+            indicadorId,
+            ano
+          ]
+        );
+
+
+        resumo.atualizados++;
+
+      }
+
+
+      // ======================================================
+      // INSERT
+      // ======================================================
+
+      else {
+
+        await db.query(
+          `
+          INSERT INTO valores_indicadores (
+            municipio_id,
+            indicador_id,
+            valor,
+            ano_referencia
+          )
+
+          VALUES (
+            $1,
+            $2,
+            $3,
+            $4
+          )
+          `,
+          [
+            municipioId,
+            indicadorId,
+            valor,
+            ano
+          ]
+        );
+
+
+        resumo.inseridos++;
+
+      }
+
+    }
+
+
+    return res.status(200).json({
+
+      mensagem:
+        'Importação CSV concluída.',
+
+      resumo
+
+    });
+
+
+  } catch (erro) {
+
+    console.error(
+      'Erro ao importar CSV:',
+      erro
+    );
+
+
+    return res.status(500).json({
+
+      erro:
+        'Erro interno durante a importação do CSV.',
+
+      detalhe:
+        erro.message
+
     });
 
   }
