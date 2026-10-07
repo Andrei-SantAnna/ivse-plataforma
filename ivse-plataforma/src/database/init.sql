@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS valores_indicadores (
 CREATE TABLE IF NOT EXISTS analises (
     id SERIAL PRIMARY KEY,
     titulo VARCHAR(255) NOT NULL,
+    ano_referencia INTEGER NOT NULL,
     usuario_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
     data_execucao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(50) DEFAULT 'concluida'
