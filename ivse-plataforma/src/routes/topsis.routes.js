@@ -1,9 +1,32 @@
 // src/routes/topsis.routes.js
-const express = require('express');
-const router = express.Router();
-const topsisController = require('../controllers/topsis.controller');
 
-router.post('/simular', topsisController.simular);
-router.post('/executar', topsisController.executarAnalise); // <-- Nova rota de produção
+const express = require('express');
+
+const router = express.Router();
+
+const topsisController =
+  require('../controllers/topsis.controller');
+
+
+// Simulação sem gravação
+router.post(
+  '/simular',
+  topsisController.simular
+);
+
+
+// Execução oficial com gravação no banco
+router.post(
+  '/executar',
+  topsisController.executarAnalise
+);
+
+
+// Histórico das análises
+router.get(
+  '/analises',
+  topsisController.listarAnalises
+);
+
 
 module.exports = router;
