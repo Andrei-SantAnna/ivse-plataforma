@@ -21,5 +21,6 @@ app.get('/api/health', (req, res) => {
 app.use('/api/municipios', municipioRoutes);
 app.use('/api/indicadores', indicadorRoutes);
 app.use('/api/topsis', topsisRoutes);
+app.use('/api/dashboard', require('./routes/dashboard.routes'));
 
 module.exports = app;
