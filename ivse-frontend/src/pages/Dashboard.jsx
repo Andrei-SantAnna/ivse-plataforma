@@ -5,6 +5,7 @@ import api from '../services/api';
 export default function Dashboard() {
   const [statusBanco, setStatusBanco] = useState('Verificando...');
   const [municipios, setMunicipios] = useState([]);
+  const [estatisticas, setEstatisticas] = useState({ municipios: 0, analises: 0 })
 
   useEffect(() => {
     // Busca o status do banco e os municípios cadastrados assim que a tela carrega
@@ -15,6 +16,10 @@ export default function Dashboard() {
 
         const munRes = await api.get('/municipios');
         setMunicipios(munRes.data);
+
+        const estatisticasRes = await api.get('/dashboard/estatisticas');
+        setEstatisticas(estatisticasRes.data);
+        
       } catch (error) {
         console.error("Erro ao conectar com a API", error);
         setStatusBanco('Erro de Conexão');
@@ -36,15 +41,13 @@ export default function Dashboard() {
         </div>
         
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h3 className="text-sm font-medium text-gray-500 uppercase">Municípios na Base</h3>
-          <p className="text-2xl font-bold mt-2 text-blue-900">
-            {municipios.length}
-          </p>
+          <h3 className="text-gray-500 text-sm font-medium">Municípios na Base</h3>
+          <p className="text-3xl font-bold text-blue-600 mt-2">{estatisticas.municipios}</p>
         </div>
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <h3 className="text-sm font-medium text-gray-500 uppercase">Análises Realizadas</h3>
-          <p className="text-2xl font-bold mt-2 text-blue-900">0</p>
+          <p className="text-2xl font-bold mt-2 text-blue-900">{estatisticas.analises}</p>
         </div>
       </div>
 
