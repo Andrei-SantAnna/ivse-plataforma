@@ -90,8 +90,20 @@ exports.executarAnalise = async (req, res) => {
 
     // Gravar a Análise Pai
     const resAnalise = await db.query(
-      'INSERT INTO analises (titulo, usuario_id) VALUES ($1, $2) RETURNING id',
-      [titulo, usuario_id || null]
+      `
+      INSERT INTO analises (
+        titulo,
+        ano_referencia,
+        usuario_id
+      )
+      VALUES ($1, $2, $3)
+      RETURNING id
+      `,
+      [
+        titulo,
+        ano_referencia,
+        usuario_id || null
+      ]
     );
     const analiseId = resAnalise.rows[0].id;
 
@@ -129,4 +141,71 @@ exports.executarAnalise = async (req, res) => {
     console.error('Erro na execução da análise:', erro);
     res.status(500).json({ erro: 'Falha interna ao executar a análise. Nenhuma alteração foi salva.' });
   }
+};
+
+/**
+ * Lista o histórico de análises TOPSIS executadas.
+ */
+exports.listarAnalises = async (req, res) => {
+
+  try {
+
+    const query = `
+      SELECT
+        a.id,
+        a.titulo,
+        a.ano_referencia,
+        a.usuario_id,
+        a.data_execucao,
+        a.status,
+
+        COUNT(rt.id) AS total_municipios
+
+      FROM analises a
+
+      LEFT JOIN resultados_topsis rt
+        ON rt.analise_id = a.id
+
+      GROUP BY
+        a.id,
+        a.titulo,
+        a.ano_referencia,
+        a.usuario_id,
+        a.data_execucao,
+        a.status
+
+      ORDER BY
+        a.data_execucao DESC,
+        a.id DESC
+    `;
+
+    const resultado = await db.query(query);
+
+    const analises = resultado.rows.map(
+      analise => ({
+        ...analise,
+
+        total_municipios:
+          Number(
+            analise.total_municipios
+          )
+      })
+    );
+
+    res.status(200).json(analises);
+
+  } catch (erro) {
+
+    console.error(
+      'Erro ao listar análises TOPSIS:',
+      erro
+    );
+
+    res.status(500).json({
+      erro:
+        'Falha interna ao buscar o histórico de análises.'
+    });
+
+  }
+
 };
