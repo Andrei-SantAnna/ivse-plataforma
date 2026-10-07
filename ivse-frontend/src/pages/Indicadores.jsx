@@ -10,7 +10,9 @@ import {
   Database,
   Calculator,
   MapPin,
-  Save
+  Save,
+  Upload,
+  FileText
 } from 'lucide-react';
 
 import api from '../services/api';
@@ -18,29 +20,22 @@ import api from '../services/api';
 
 const Indicadores = () => {
 
-  // ============================================================
-  // ESTADOS
-  // ============================================================
-
   const [indicadores, setIndicadores] = useState([]);
   const [municipios, setMunicipios] = useState([]);
 
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
 
-  const [mostrarFormulario, setMostrarFormulario] =
-    useState(false);
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [mostrarFormularioValor, setMostrarFormularioValor] = useState(false);
+  const [mostrarImportacao, setMostrarImportacao] = useState(false);
 
-  const [mostrarFormularioValor, setMostrarFormularioValor] =
-    useState(false);
+  const [arquivoCSV, setArquivoCSV] = useState(null);
+  const [resultadoImportacao, setResultadoImportacao] = useState(null);
 
   const [erro, setErro] = useState(null);
   const [sucesso, setSucesso] = useState(null);
 
-
-  // ============================================================
-  // FORMULÁRIO DE INDICADOR
-  // ============================================================
 
   const formularioInicial = {
     codigo: '',
@@ -54,14 +49,6 @@ const Indicadores = () => {
   };
 
 
-  const [formulario, setFormulario] =
-    useState(formularioInicial);
-
-
-  // ============================================================
-  // FORMULÁRIO DE VALOR
-  // ============================================================
-
   const formularioValorInicial = {
     municipio_id: '',
     indicador_id: '',
@@ -69,6 +56,9 @@ const Indicadores = () => {
     ano_referencia: 2026
   };
 
+
+  const [formulario, setFormulario] =
+    useState(formularioInicial);
 
   const [formularioValor, setFormularioValor] =
     useState(formularioValorInicial);
@@ -132,7 +122,7 @@ const Indicadores = () => {
 
 
   // ============================================================
-  // ATUALIZAR FORMULÁRIO DE INDICADOR
+  // FORMULÁRIOS
   // ============================================================
 
   const atualizarCampo = (
@@ -150,10 +140,6 @@ const Indicadores = () => {
   };
 
 
-  // ============================================================
-  // ATUALIZAR FORMULÁRIO DE VALOR
-  // ============================================================
-
   const atualizarCampoValor = (
     campo,
     valor
@@ -170,7 +156,7 @@ const Indicadores = () => {
 
 
   // ============================================================
-  // ABRIR FORMULÁRIO INDICADOR
+  // MODAL INDICADOR
   // ============================================================
 
   const abrirFormulario = () => {
@@ -187,10 +173,6 @@ const Indicadores = () => {
   };
 
 
-  // ============================================================
-  // FECHAR FORMULÁRIO INDICADOR
-  // ============================================================
-
   const fecharFormulario = () => {
 
     if (salvando) {
@@ -203,11 +185,13 @@ const Indicadores = () => {
       formularioInicial
     );
 
+    setErro(null);
+
   };
 
 
   // ============================================================
-  // ABRIR FORMULÁRIO VALOR
+  // MODAL VALOR
   // ============================================================
 
   const abrirFormularioValor = () => {
@@ -224,10 +208,6 @@ const Indicadores = () => {
   };
 
 
-  // ============================================================
-  // FECHAR FORMULÁRIO VALOR
-  // ============================================================
-
   const fecharFormularioValor = () => {
 
     if (salvando) {
@@ -239,6 +219,39 @@ const Indicadores = () => {
     setFormularioValor(
       formularioValorInicial
     );
+
+    setErro(null);
+
+  };
+
+
+  // ============================================================
+  // MODAL CSV
+  // ============================================================
+
+  const abrirImportacao = () => {
+
+    setArquivoCSV(null);
+    setResultadoImportacao(null);
+    setErro(null);
+    setSucesso(null);
+
+    setMostrarImportacao(true);
+
+  };
+
+
+  const fecharImportacao = () => {
+
+    if (salvando) {
+      return;
+    }
+
+    setMostrarImportacao(false);
+
+    setArquivoCSV(null);
+    setResultadoImportacao(null);
+    setErro(null);
 
   };
 
@@ -263,6 +276,24 @@ const Indicadores = () => {
 
         setErro(
           'Código e nome são obrigatórios.'
+        );
+
+        return;
+
+      }
+
+
+      if (
+        ![
+          'beneficio',
+          'custo'
+        ].includes(
+          formulario.tipo_padrao
+        )
+      ) {
+
+        setErro(
+          'Selecione uma natureza TOPSIS válida.'
         );
 
         return;
@@ -312,11 +343,6 @@ const Indicadores = () => {
         );
 
 
-        setSucesso(
-          'Indicador cadastrado com sucesso.'
-        );
-
-
         setMostrarFormulario(false);
 
         setFormulario(
@@ -325,6 +351,11 @@ const Indicadores = () => {
 
 
         await carregarDados();
+
+
+        setSucesso(
+          'Indicador cadastrado com sucesso.'
+        );
 
 
       } catch (erro) {
@@ -414,15 +445,15 @@ const Indicadores = () => {
         );
 
 
-        setSucesso(
-          'Valor do indicador registrado com sucesso.'
-        );
-
-
         setMostrarFormularioValor(false);
 
         setFormularioValor(
           formularioValorInicial
+        );
+
+
+        setSucesso(
+          'Valor do indicador registrado com sucesso.'
         );
 
 
@@ -437,6 +468,102 @@ const Indicadores = () => {
         setErro(
           erro.response?.data?.erro ||
           'Não foi possível registrar o valor.'
+        );
+
+
+      } finally {
+
+        setSalvando(false);
+
+      }
+
+    };
+
+
+  // ============================================================
+  // IMPORTAR CSV
+  // ============================================================
+
+  const importarCSV =
+    async (event) => {
+
+      event.preventDefault();
+
+      setErro(null);
+      setSucesso(null);
+      setResultadoImportacao(null);
+
+
+      if (!arquivoCSV) {
+
+        setErro(
+          'Selecione um arquivo CSV.'
+        );
+
+        return;
+
+      }
+
+
+      if (
+        !arquivoCSV.name
+          .toLowerCase()
+          .endsWith('.csv')
+      ) {
+
+        setErro(
+          'O arquivo selecionado deve ser CSV.'
+        );
+
+        return;
+
+      }
+
+
+      try {
+
+        setSalvando(true);
+
+
+        const dados =
+          new FormData();
+
+
+        dados.append(
+          'arquivo',
+          arquivoCSV
+        );
+
+
+        const resposta =
+          await api.post(
+            '/indicadores/importar-csv',
+            dados
+          );
+
+
+        setResultadoImportacao(
+          resposta.data.resumo
+        );
+
+
+        setSucesso(
+          resposta.data.mensagem ||
+          'Importação concluída com sucesso.'
+        );
+
+
+      } catch (erro) {
+
+        console.error(
+          'Erro ao importar CSV:',
+          erro
+        );
+
+
+        setErro(
+          erro.response?.data?.erro ||
+          'Não foi possível importar o arquivo CSV.'
         );
 
 
@@ -544,6 +671,37 @@ const Indicadores = () => {
           <button
 
             onClick={
+              abrirImportacao
+            }
+
+            className="
+              bg-white
+              hover:bg-gray-50
+              text-emerald-600
+              border
+              border-emerald-200
+              px-4
+              py-2.5
+              rounded-lg
+              font-medium
+              text-sm
+              flex
+              items-center
+              gap-2
+              transition
+            "
+          >
+
+            <Upload size={18} />
+
+            Importar CSV
+
+          </button>
+
+
+          <button
+
+            onClick={
               abrirFormularioValor
             }
 
@@ -607,7 +765,8 @@ const Indicadores = () => {
 
       {/* SUCESSO */}
 
-      {sucesso && (
+      {sucesso &&
+       !mostrarImportacao && (
 
         <div
           className="
@@ -639,7 +798,8 @@ const Indicadores = () => {
 
       {erro &&
        !mostrarFormulario &&
-       !mostrarFormularioValor && (
+       !mostrarFormularioValor &&
+       !mostrarImportacao && (
 
         <div
           className="
@@ -705,7 +865,9 @@ const Indicadores = () => {
               justify-center
             "
           >
+
             <Database size={22} />
+
           </div>
 
 
@@ -761,7 +923,9 @@ const Indicadores = () => {
               justify-center
             "
           >
+
             <Calculator size={22} />
+
           </div>
 
 
@@ -795,200 +959,239 @@ const Indicadores = () => {
 
       {/* CARDS */}
 
-      <div
-        className="
-          grid
-          grid-cols-1
-          md:grid-cols-2
-          lg:grid-cols-3
-          gap-6
-        "
-      >
+      {indicadores.length === 0 ? (
 
-        {indicadores.map(
-          indicador => {
+        <div
+          className="
+            bg-white
+            border
+            border-gray-100
+            rounded-xl
+            shadow-sm
+            p-10
+            text-center
+          "
+        >
 
-            const beneficio =
-              indicador.tipo_padrao ===
-              'beneficio';
+          <p
+            className="
+              text-gray-500
+              text-sm
+            "
+          >
+            Nenhum indicador cadastrado.
+          </p>
 
+        </div>
 
-            return (
+      ) : (
 
-              <div
+        <div
+          className="
+            grid
+            grid-cols-1
+            md:grid-cols-2
+            lg:grid-cols-3
+            gap-6
+          "
+        >
 
-                key={indicador.id}
+          {indicadores.map(
+            indicador => {
 
-                className="
-                  bg-white
-                  rounded-xl
-                  shadow-sm
-                  border
-                  border-gray-100
-                  p-6
-                  flex
-                  flex-col
-                  justify-between
-                  hover:shadow-md
-                  transition-shadow
-                "
-              >
-
-
-                <div>
-
-
-                  <div
-                    className="
-                      flex
-                      justify-between
-                      items-start
-                      gap-3
-                      mb-3
-                    "
-                  >
-
-                    <span
-                      className="
-                        px-3
-                        py-1
-                        bg-blue-50
-                        text-blue-700
-                        font-mono
-                        text-xs
-                        font-semibold
-                        rounded-full
-                      "
-                    >
-                      {indicador.codigo}
-                    </span>
+              const beneficio =
+                indicador.tipo_padrao ===
+                'beneficio';
 
 
-                    <span
-                      className={`
-                        px-2.5
-                        py-1
-                        text-xs
-                        font-medium
-                        rounded-full
-
-                        ${
-                          beneficio
-
-                            ? 'bg-emerald-50 text-emerald-700'
-
-                            : 'bg-amber-50 text-amber-700'
-                        }
-                      `}
-                    >
-
-                      {beneficio
-                        ? 'Benefício (↑)'
-                        : 'Custo (↓)'}
-
-                    </span>
-
-                  </div>
-
-
-                  <h3
-                    className="
-                      text-lg
-                      font-bold
-                      text-gray-800
-                      mb-1
-                    "
-                  >
-                    {indicador.nome}
-                  </h3>
-
-
-                  <p
-                    className="
-                      text-xs
-                      font-medium
-                      text-blue-600
-                      mb-3
-                      uppercase
-                      tracking-wider
-                    "
-                  >
-                    {indicador.dimensao ||
-                      'Sem dimensão'}
-                  </p>
-
-
-                  <p
-                    className="
-                      text-sm
-                      text-gray-600
-                      mb-4
-                    "
-                  >
-
-                    {indicador.descricao ||
-                      'Nenhuma descrição cadastrada.'}
-
-                  </p>
-
-                </div>
-
+              return (
 
                 <div
+
+                  key={indicador.id}
+
                   className="
-                    border-t
+                    bg-white
+                    rounded-xl
+                    shadow-sm
+                    border
                     border-gray-100
-                    pt-4
-                    mt-2
-                    text-xs
-                    text-gray-500
-                    space-y-2
+                    p-6
+                    flex
+                    flex-col
+                    justify-between
+                    hover:shadow-md
+                    transition-shadow
                   "
                 >
 
-                  <p>
-                    <strong>Fonte:</strong>{' '}
-                    {indicador.fonte ||
-                      'Não informada'}
-                  </p>
+
+                  <div>
 
 
-                  <p>
-                    <strong>Unidade:</strong>{' '}
-                    {indicador.unidade_medida ||
-                      'Não informada'}
-                  </p>
+                    <div
+                      className="
+                        flex
+                        justify-between
+                        items-start
+                        gap-3
+                        mb-3
+                      "
+                    >
+
+                      <span
+                        className="
+                          px-3
+                          py-1
+                          bg-blue-50
+                          text-blue-700
+                          font-mono
+                          text-xs
+                          font-semibold
+                          rounded-full
+                        "
+                      >
+                        {indicador.codigo}
+                      </span>
+
+
+                      <span
+                        className={`
+                          px-2.5
+                          py-1
+                          text-xs
+                          font-medium
+                          rounded-full
+
+                          ${
+                            beneficio
+
+                              ? 'bg-emerald-50 text-emerald-700'
+
+                              : 'bg-amber-50 text-amber-700'
+                          }
+                        `}
+                      >
+
+                        {beneficio
+                          ? 'Benefício (↑)'
+                          : 'Custo (↓)'}
+
+                      </span>
+
+                    </div>
+
+
+                    <h3
+                      className="
+                        text-lg
+                        font-bold
+                        text-gray-800
+                        mb-1
+                      "
+                    >
+                      {indicador.nome}
+                    </h3>
+
+
+                    <p
+                      className="
+                        text-xs
+                        font-medium
+                        text-blue-600
+                        mb-3
+                        uppercase
+                        tracking-wider
+                      "
+                    >
+                      {indicador.dimensao ||
+                        'Sem dimensão'}
+                    </p>
+
+
+                    <p
+                      className="
+                        text-sm
+                        text-gray-600
+                        mb-4
+                      "
+                    >
+
+                      {indicador.descricao ||
+                        'Nenhuma descrição cadastrada.'}
+
+                    </p>
+
+                  </div>
 
 
                   <div
                     className="
-                      font-mono
-                      bg-gray-50
-                      p-2
-                      rounded
-                      text-gray-600
+                      border-t
+                      border-gray-100
+                      pt-4
+                      mt-2
+                      text-xs
+                      text-gray-500
+                      space-y-2
                     "
                   >
 
-                    <strong>
-                      Fórmula:
-                    </strong>{' '}
+                    <p>
 
-                    {indicador.formula ||
-                      'Não informada'}
+                      <strong>
+                        Fonte:
+                      </strong>{' '}
+
+                      {indicador.fonte ||
+                        'Não informada'}
+
+                    </p>
+
+
+                    <p>
+
+                      <strong>
+                        Unidade:
+                      </strong>{' '}
+
+                      {indicador.unidade_medida ||
+                        'Não informada'}
+
+                    </p>
+
+
+                    <div
+                      className="
+                        font-mono
+                        bg-gray-50
+                        p-2
+                        rounded
+                        text-gray-600
+                      "
+                    >
+
+                      <strong>
+                        Fórmula:
+                      </strong>{' '}
+
+                      {indicador.formula ||
+                        'Não informada'}
+
+                    </div>
 
                   </div>
 
                 </div>
 
-              </div>
+              );
 
-            );
+            }
+          )}
 
-          }
-        )}
+        </div>
 
-      </div>
+      )}
 
 
       {/* ====================================================== */}
@@ -1062,7 +1265,9 @@ const Indicadores = () => {
 
               <button
                 type="button"
-                onClick={fecharFormulario}
+                onClick={
+                  fecharFormulario
+                }
               >
                 <X size={22} />
               </button>
@@ -1071,7 +1276,9 @@ const Indicadores = () => {
 
 
             <form
-              onSubmit={cadastrarIndicador}
+              onSubmit={
+                cadastrarIndicador
+              }
               className="p-6 space-y-5"
             >
 
@@ -1103,14 +1310,23 @@ const Indicadores = () => {
 
                 <div>
 
-                  <label className="block text-sm font-medium mb-2">
+                  <label
+                    className="
+                      block
+                      text-sm
+                      font-medium
+                      mb-2
+                    "
+                  >
                     Código *
                   </label>
 
                   <input
                     type="text"
                     required
-                    value={formulario.codigo}
+                    value={
+                      formulario.codigo
+                    }
                     onChange={
                       e =>
                         atualizarCampo(
@@ -1118,7 +1334,12 @@ const Indicadores = () => {
                           e.target.value
                         )
                     }
-                    className="w-full border rounded-lg p-3"
+                    className="
+                      w-full
+                      border
+                      rounded-lg
+                      p-3
+                    "
                   />
 
                 </div>
@@ -1126,12 +1347,21 @@ const Indicadores = () => {
 
                 <div>
 
-                  <label className="block text-sm font-medium mb-2">
+                  <label
+                    className="
+                      block
+                      text-sm
+                      font-medium
+                      mb-2
+                    "
+                  >
                     Natureza TOPSIS *
                   </label>
 
                   <select
-                    value={formulario.tipo_padrao}
+                    value={
+                      formulario.tipo_padrao
+                    }
                     onChange={
                       e =>
                         atualizarCampo(
@@ -1139,7 +1369,12 @@ const Indicadores = () => {
                           e.target.value
                         )
                     }
-                    className="w-full border rounded-lg p-3"
+                    className="
+                      w-full
+                      border
+                      rounded-lg
+                      p-3
+                    "
                   >
 
                     <option value="beneficio">
@@ -1159,14 +1394,23 @@ const Indicadores = () => {
 
               <div>
 
-                <label className="block text-sm font-medium mb-2">
+                <label
+                  className="
+                    block
+                    text-sm
+                    font-medium
+                    mb-2
+                  "
+                >
                   Nome *
                 </label>
 
                 <input
                   type="text"
                   required
-                  value={formulario.nome}
+                  value={
+                    formulario.nome
+                  }
                   onChange={
                     e =>
                       atualizarCampo(
@@ -1174,7 +1418,12 @@ const Indicadores = () => {
                         e.target.value
                       )
                   }
-                  className="w-full border rounded-lg p-3"
+                  className="
+                    w-full
+                    border
+                    rounded-lg
+                    p-3
+                  "
                 />
 
               </div>
@@ -1190,13 +1439,22 @@ const Indicadores = () => {
 
                 <div>
 
-                  <label className="block text-sm font-medium mb-2">
+                  <label
+                    className="
+                      block
+                      text-sm
+                      font-medium
+                      mb-2
+                    "
+                  >
                     Dimensão
                   </label>
 
                   <input
                     type="text"
-                    value={formulario.dimensao}
+                    value={
+                      formulario.dimensao
+                    }
                     onChange={
                       e =>
                         atualizarCampo(
@@ -1204,7 +1462,12 @@ const Indicadores = () => {
                           e.target.value
                         )
                     }
-                    className="w-full border rounded-lg p-3"
+                    className="
+                      w-full
+                      border
+                      rounded-lg
+                      p-3
+                    "
                   />
 
                 </div>
@@ -1212,13 +1475,22 @@ const Indicadores = () => {
 
                 <div>
 
-                  <label className="block text-sm font-medium mb-2">
+                  <label
+                    className="
+                      block
+                      text-sm
+                      font-medium
+                      mb-2
+                    "
+                  >
                     Unidade
                   </label>
 
                   <input
                     type="text"
-                    value={formulario.unidade_medida}
+                    value={
+                      formulario.unidade_medida
+                    }
                     onChange={
                       e =>
                         atualizarCampo(
@@ -1226,7 +1498,12 @@ const Indicadores = () => {
                           e.target.value
                         )
                     }
-                    className="w-full border rounded-lg p-3"
+                    className="
+                      w-full
+                      border
+                      rounded-lg
+                      p-3
+                    "
                   />
 
                 </div>
@@ -1236,13 +1513,22 @@ const Indicadores = () => {
 
               <div>
 
-                <label className="block text-sm font-medium mb-2">
+                <label
+                  className="
+                    block
+                    text-sm
+                    font-medium
+                    mb-2
+                  "
+                >
                   Fonte
                 </label>
 
                 <input
                   type="text"
-                  value={formulario.fonte}
+                  value={
+                    formulario.fonte
+                  }
                   onChange={
                     e =>
                       atualizarCampo(
@@ -1250,7 +1536,12 @@ const Indicadores = () => {
                         e.target.value
                       )
                   }
-                  className="w-full border rounded-lg p-3"
+                  className="
+                    w-full
+                    border
+                    rounded-lg
+                    p-3
+                  "
                 />
 
               </div>
@@ -1258,13 +1549,22 @@ const Indicadores = () => {
 
               <div>
 
-                <label className="block text-sm font-medium mb-2">
+                <label
+                  className="
+                    block
+                    text-sm
+                    font-medium
+                    mb-2
+                  "
+                >
                   Fórmula
                 </label>
 
                 <textarea
                   rows="2"
-                  value={formulario.formula}
+                  value={
+                    formulario.formula
+                  }
                   onChange={
                     e =>
                       atualizarCampo(
@@ -1272,7 +1572,12 @@ const Indicadores = () => {
                         e.target.value
                       )
                   }
-                  className="w-full border rounded-lg p-3"
+                  className="
+                    w-full
+                    border
+                    rounded-lg
+                    p-3
+                  "
                 />
 
               </div>
@@ -1280,13 +1585,22 @@ const Indicadores = () => {
 
               <div>
 
-                <label className="block text-sm font-medium mb-2">
+                <label
+                  className="
+                    block
+                    text-sm
+                    font-medium
+                    mb-2
+                  "
+                >
                   Descrição
                 </label>
 
                 <textarea
                   rows="3"
-                  value={formulario.descricao}
+                  value={
+                    formulario.descricao
+                  }
                   onChange={
                     e =>
                       atualizarCampo(
@@ -1294,7 +1608,12 @@ const Indicadores = () => {
                         e.target.value
                       )
                   }
-                  className="w-full border rounded-lg p-3"
+                  className="
+                    w-full
+                    border
+                    rounded-lg
+                    p-3
+                  "
                 />
 
               </div>
@@ -1312,8 +1631,15 @@ const Indicadores = () => {
 
                 <button
                   type="button"
-                  onClick={fecharFormulario}
-                  className="px-4 py-2 border rounded-lg"
+                  onClick={
+                    fecharFormulario
+                  }
+                  className="
+                    px-4
+                    py-2
+                    border
+                    rounded-lg
+                  "
                 >
                   Cancelar
                 </button>
@@ -1321,7 +1647,9 @@ const Indicadores = () => {
 
                 <button
                   type="submit"
-                  disabled={salvando}
+                  disabled={
+                    salvando
+                  }
                   className="
                     bg-blue-600
                     text-white
@@ -1415,7 +1743,9 @@ const Indicadores = () => {
 
               <button
                 type="button"
-                onClick={fecharFormularioValor}
+                onClick={
+                  fecharFormularioValor
+                }
               >
                 <X size={22} />
               </button>
@@ -1424,8 +1754,13 @@ const Indicadores = () => {
 
 
             <form
-              onSubmit={registrarValor}
-              className="p-6 space-y-5"
+              onSubmit={
+                registrarValor
+              }
+              className="
+                p-6
+                space-y-5
+              "
             >
 
               {erro && (
@@ -1446,17 +1781,24 @@ const Indicadores = () => {
               )}
 
 
-              {/* MUNICÍPIO */}
-
               <div>
 
-                <label className="block text-sm font-medium mb-2">
+                <label
+                  className="
+                    block
+                    text-sm
+                    font-medium
+                    mb-2
+                  "
+                >
                   Município *
                 </label>
 
                 <select
                   required
-                  value={formularioValor.municipio_id}
+                  value={
+                    formularioValor.municipio_id
+                  }
                   onChange={
                     e =>
                       atualizarCampoValor(
@@ -1482,8 +1824,12 @@ const Indicadores = () => {
                     municipio => (
 
                       <option
-                        key={municipio.id}
-                        value={municipio.id}
+                        key={
+                          municipio.id
+                        }
+                        value={
+                          municipio.id
+                        }
                       >
                         {municipio.nome}
                         {' - '}
@@ -1498,17 +1844,24 @@ const Indicadores = () => {
               </div>
 
 
-              {/* INDICADOR */}
-
               <div>
 
-                <label className="block text-sm font-medium mb-2">
+                <label
+                  className="
+                    block
+                    text-sm
+                    font-medium
+                    mb-2
+                  "
+                >
                   Indicador *
                 </label>
 
                 <select
                   required
-                  value={formularioValor.indicador_id}
+                  value={
+                    formularioValor.indicador_id
+                  }
                   onChange={
                     e =>
                       atualizarCampoValor(
@@ -1534,8 +1887,12 @@ const Indicadores = () => {
                     indicador => (
 
                       <option
-                        key={indicador.id}
-                        value={indicador.id}
+                        key={
+                          indicador.id
+                        }
+                        value={
+                          indicador.id
+                        }
                       >
                         {indicador.codigo}
                         {' - '}
@@ -1550,26 +1907,36 @@ const Indicadores = () => {
               </div>
 
 
-              {/* ANO + VALOR */}
-
               <div
                 className="
                   grid
-                  grid-cols-2
+                  grid-cols-1
+                  sm:grid-cols-2
                   gap-4
                 "
               >
 
                 <div>
 
-                  <label className="block text-sm font-medium mb-2">
+                  <label
+                    className="
+                      block
+                      text-sm
+                      font-medium
+                      mb-2
+                    "
+                  >
                     Ano *
                   </label>
 
                   <input
                     type="number"
+                    min="2000"
+                    max="2100"
                     required
-                    value={formularioValor.ano_referencia}
+                    value={
+                      formularioValor.ano_referencia
+                    }
                     onChange={
                       e =>
                         atualizarCampoValor(
@@ -1577,7 +1944,12 @@ const Indicadores = () => {
                           e.target.value
                         )
                     }
-                    className="w-full border rounded-lg p-3"
+                    className="
+                      w-full
+                      border
+                      rounded-lg
+                      p-3
+                    "
                   />
 
                 </div>
@@ -1585,7 +1957,14 @@ const Indicadores = () => {
 
                 <div>
 
-                  <label className="block text-sm font-medium mb-2">
+                  <label
+                    className="
+                      block
+                      text-sm
+                      font-medium
+                      mb-2
+                    "
+                  >
                     Valor *
                   </label>
 
@@ -1593,7 +1972,9 @@ const Indicadores = () => {
                     type="number"
                     step="any"
                     required
-                    value={formularioValor.valor}
+                    value={
+                      formularioValor.valor
+                    }
                     onChange={
                       e =>
                         atualizarCampoValor(
@@ -1601,7 +1982,12 @@ const Indicadores = () => {
                           e.target.value
                         )
                     }
-                    className="w-full border rounded-lg p-3"
+                    className="
+                      w-full
+                      border
+                      rounded-lg
+                      p-3
+                    "
                     placeholder="Ex: 95.5"
                   />
 
@@ -1622,8 +2008,15 @@ const Indicadores = () => {
 
                 <button
                   type="button"
-                  onClick={fecharFormularioValor}
-                  className="px-4 py-2 border rounded-lg"
+                  onClick={
+                    fecharFormularioValor
+                  }
+                  className="
+                    px-4
+                    py-2
+                    border
+                    rounded-lg
+                  "
                 >
                   Cancelar
                 </button>
@@ -1631,7 +2024,9 @@ const Indicadores = () => {
 
                 <button
                   type="submit"
-                  disabled={salvando}
+                  disabled={
+                    salvando
+                  }
                   className="
                     bg-blue-600
                     text-white
@@ -1649,6 +2044,588 @@ const Indicadores = () => {
                   {salvando
                     ? 'Salvando...'
                     : 'Registrar Valor'}
+
+                </button>
+
+              </div>
+
+            </form>
+
+          </div>
+
+        </div>
+
+      )}
+
+
+      {/* ====================================================== */}
+      {/* MODAL IMPORTAR CSV */}
+      {/* ====================================================== */}
+
+      {mostrarImportacao && (
+
+        <div
+          className="
+            fixed
+            inset-0
+            bg-black/40
+            z-[2000]
+            flex
+            items-center
+            justify-center
+            p-4
+          "
+        >
+
+          <div
+            className="
+              bg-white
+              rounded-xl
+              shadow-xl
+              w-full
+              max-w-xl
+              max-h-[90vh]
+              overflow-y-auto
+            "
+          >
+
+            <div
+              className="
+                flex
+                items-center
+                justify-between
+                px-6
+                py-4
+                border-b
+                border-gray-100
+              "
+            >
+
+              <div>
+
+                <h2
+                  className="
+                    text-lg
+                    font-bold
+                    text-gray-800
+                  "
+                >
+                  Importar dados por CSV
+                </h2>
+
+
+                <p
+                  className="
+                    text-xs
+                    text-gray-500
+                    mt-1
+                  "
+                >
+                  Importe valores de indicadores
+                  para vários municípios de uma só vez.
+                </p>
+
+              </div>
+
+
+              <button
+                type="button"
+                onClick={
+                  fecharImportacao
+                }
+              >
+                <X size={22} />
+              </button>
+
+            </div>
+
+
+            <form
+              onSubmit={
+                importarCSV
+              }
+              className="
+                p-6
+                space-y-5
+              "
+            >
+
+              <div
+                className="
+                  bg-blue-50
+                  border
+                  border-blue-100
+                  rounded-lg
+                  p-4
+                "
+              >
+
+                <div
+                  className="
+                    flex
+                    items-center
+                    gap-2
+                    text-blue-700
+                    font-medium
+                    text-sm
+                    mb-2
+                  "
+                >
+
+                  <FileText size={18} />
+
+                  Formato esperado
+
+                </div>
+
+
+                <code
+                  className="
+                    block
+                    text-xs
+                    text-gray-700
+                    bg-white
+                    rounded
+                    p-3
+                    overflow-x-auto
+                  "
+                >
+                  codigo_ibge,codigo_indicador,valor,ano_referencia
+                </code>
+
+              </div>
+
+
+              <div>
+
+                <p
+                  className="
+                    text-sm
+                    font-medium
+                    text-gray-700
+                    mb-2
+                  "
+                >
+                  Exemplo:
+                </p>
+
+
+                <pre
+                  className="
+                    bg-gray-50
+                    border
+                    rounded-lg
+                    p-3
+                    text-xs
+                    overflow-x-auto
+                  "
+                >
+{`codigo_ibge,codigo_indicador,valor,ano_referencia
+2927408,I01,99.85,2026
+2910800,I01,98.44,2026
+2905701,I02,2450.50,2026`}
+                </pre>
+
+              </div>
+
+
+              <div>
+
+                <label
+                  className="
+                    block
+                    text-sm
+                    font-medium
+                    text-gray-700
+                    mb-2
+                  "
+                >
+                  Arquivo CSV *
+                </label>
+
+
+                <input
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={
+                    e => {
+
+                      setArquivoCSV(
+                        e.target.files?.[0] ||
+                        null
+                      );
+
+                      setResultadoImportacao(null);
+
+                      setErro(null);
+
+                    }
+                  }
+                  className="
+                    w-full
+                    border
+                    border-gray-300
+                    rounded-lg
+                    p-3
+                    text-sm
+                    bg-white
+                  "
+                />
+
+
+                {arquivoCSV && (
+
+                  <p
+                    className="
+                      text-xs
+                      text-gray-500
+                      mt-2
+                    "
+                  >
+                    Arquivo selecionado:{' '}
+
+                    <strong>
+                      {arquivoCSV.name}
+                    </strong>
+                  </p>
+
+                )}
+
+              </div>
+
+
+              {erro && (
+
+                <div
+                  className="
+                    bg-red-50
+                    border
+                    border-red-200
+                    text-red-700
+                    rounded-lg
+                    p-3
+                    flex
+                    gap-2
+                  "
+                >
+
+                  <AlertCircle size={18} />
+
+                  <span className="text-sm">
+                    {erro}
+                  </span>
+
+                </div>
+
+              )}
+
+
+              {sucesso &&
+               resultadoImportacao && (
+
+                <div
+                  className="
+                    bg-green-50
+                    border
+                    border-green-200
+                    text-green-700
+                    rounded-lg
+                    p-3
+                    flex
+                    gap-2
+                  "
+                >
+
+                  <CheckCircle2 size={18} />
+
+                  <span className="text-sm">
+                    {sucesso}
+                  </span>
+
+                </div>
+
+              )}
+
+
+              {resultadoImportacao && (
+
+                <div
+                  className="
+                    bg-green-50
+                    border
+                    border-green-200
+                    rounded-lg
+                    p-4
+                  "
+                >
+
+                  <div
+                    className="
+                      flex
+                      items-center
+                      gap-2
+                      text-green-700
+                      font-medium
+                      mb-4
+                    "
+                  >
+
+                    <CheckCircle2 size={19} />
+
+                    Resultado da importação
+
+                  </div>
+
+
+                  <div
+                    className="
+                      grid
+                      grid-cols-2
+                      gap-3
+                    "
+                  >
+
+                    <div
+                      className="
+                        bg-white
+                        rounded-lg
+                        p-3
+                      "
+                    >
+
+                      <p
+                        className="
+                          text-xs
+                          text-gray-500
+                        "
+                      >
+                        Linhas
+                      </p>
+
+                      <p
+                        className="
+                          text-xl
+                          font-bold
+                        "
+                      >
+                        {resultadoImportacao.total_linhas}
+                      </p>
+
+                    </div>
+
+
+                    <div
+                      className="
+                        bg-white
+                        rounded-lg
+                        p-3
+                      "
+                    >
+
+                      <p
+                        className="
+                          text-xs
+                          text-gray-500
+                        "
+                      >
+                        Inseridos
+                      </p>
+
+                      <p
+                        className="
+                          text-xl
+                          font-bold
+                          text-green-600
+                        "
+                      >
+                        {resultadoImportacao.inseridos}
+                      </p>
+
+                    </div>
+
+
+                    <div
+                      className="
+                        bg-white
+                        rounded-lg
+                        p-3
+                      "
+                    >
+
+                      <p
+                        className="
+                          text-xs
+                          text-gray-500
+                        "
+                      >
+                        Atualizados
+                      </p>
+
+                      <p
+                        className="
+                          text-xl
+                          font-bold
+                          text-blue-600
+                        "
+                      >
+                        {resultadoImportacao.atualizados}
+                      </p>
+
+                    </div>
+
+
+                    <div
+                      className="
+                        bg-white
+                        rounded-lg
+                        p-3
+                      "
+                    >
+
+                      <p
+                        className="
+                          text-xs
+                          text-gray-500
+                        "
+                      >
+                        Rejeitados
+                      </p>
+
+                      <p
+                        className="
+                          text-xl
+                          font-bold
+                          text-red-600
+                        "
+                      >
+                        {resultadoImportacao.rejeitados}
+                      </p>
+
+                    </div>
+
+                  </div>
+
+
+                  {resultadoImportacao.erros?.length > 0 && (
+
+                    <div className="mt-4">
+
+                      <p
+                        className="
+                          text-sm
+                          font-medium
+                          text-red-700
+                          mb-2
+                        "
+                      >
+                        Linhas rejeitadas
+                      </p>
+
+
+                      <div
+                        className="
+                          bg-white
+                          rounded-lg
+                          border
+                          max-h-40
+                          overflow-y-auto
+                        "
+                      >
+
+                        {resultadoImportacao.erros.map(
+                          (item, index) => (
+
+                            <div
+                              key={
+                                `${item.linha}-${index}`
+                              }
+                              className="
+                                p-3
+                                text-xs
+                                border-b
+                                last:border-b-0
+                              "
+                            >
+
+                              <strong>
+                                Linha {item.linha}:
+                              </strong>{' '}
+
+                              {item.motivo}
+
+                            </div>
+
+                          )
+                        )}
+
+                      </div>
+
+                    </div>
+
+                  )}
+
+                </div>
+
+              )}
+
+
+              <div
+                className="
+                  flex
+                  justify-end
+                  gap-3
+                  pt-3
+                  border-t
+                "
+              >
+
+                <button
+                  type="button"
+                  onClick={
+                    fecharImportacao
+                  }
+                  disabled={
+                    salvando
+                  }
+                  className="
+                    px-4
+                    py-2.5
+                    border
+                    rounded-lg
+                    text-gray-600
+                  "
+                >
+                  Fechar
+                </button>
+
+
+                <button
+                  type="submit"
+                  disabled={
+                    salvando ||
+                    !arquivoCSV
+                  }
+                  className="
+                    bg-emerald-600
+                    hover:bg-emerald-700
+                    text-white
+                    px-5
+                    py-2.5
+                    rounded-lg
+                    font-medium
+                    text-sm
+                    flex
+                    items-center
+                    gap-2
+                    disabled:opacity-50
+                  "
+                >
+
+                  <Upload size={17} />
+
+                  {salvando
+                    ? 'Importando...'
+                    : 'Importar CSV'}
 
                 </button>
 
