@@ -19,11 +19,28 @@ exports.simular = (req, res) => {
  * Rota de execução principal (Com acesso ao Banco de Dados)
  */
 exports.executarAnalise = async (req, res) => {
-  const { titulo, ano_referencia, criterios, usuario_id } = req.body;
+  const { titulo, ano_referencia, criterios, usuario_id, municipios_ids = [] } = req.body;
 
   if (!titulo || !ano_referencia || !criterios || criterios.length === 0) {
     return res.status(400).json({ erro: 'Os campos titulo, ano_referencia e a lista de criterios são obrigatórios.' });
   }
+
+  const municipiosIdsNormalizados = [
+  ...new Set(
+    municipios_ids
+      .map(id => Number(id))
+      .filter(id => Number.isInteger(id) && id > 0)
+  )
+];
+
+if (
+  municipios_ids.length > 0 &&
+  municipiosIdsNormalizados.length < 2
+) {
+  return res.status(400).json({
+    erro: 'Selecione pelo menos dois municípios para executar uma análise comparativa.'
+  });
+}
 
   // Extrair arrays isolados para o motor matemático
   const indicadorIds = criterios.map(c => c.indicador_id);
@@ -36,13 +53,51 @@ exports.executarAnalise = async (req, res) => {
   
   try {
     // 1. Buscar dados no PostgreSQL filtrando por ano e indicadores requisitados
-    const sqlDados = `
-      SELECT m.id AS municipio_id, m.nome AS municipio_nome, v.indicador_id, v.valor
-      FROM valores_indicadores v
-      JOIN municipios m ON v.municipio_id = m.id
-      WHERE v.ano_referencia = $1 AND v.indicador_id = ANY($2::int[])
-    `;
-    const dadosBrutos = await db.query(sqlDados, [ano_referencia, indicadorIds]);
+    let sqlDados = `
+  SELECT
+    m.id AS municipio_id,
+    m.nome AS municipio_nome,
+    v.indicador_id,
+    v.valor
+  FROM valores_indicadores v
+
+  JOIN municipios m
+    ON v.municipio_id = m.id
+
+  WHERE
+    v.ano_referencia = $1
+    AND v.indicador_id = ANY($2::int[])
+`;
+
+const parametros = [
+  ano_referencia,
+  indicadorIds
+];
+
+
+// Se o usuário selecionou municípios específicos,
+// filtra somente esses IDs.
+if (municipiosIdsNormalizados.length > 0) {
+
+  sqlDados += `
+    AND m.id = ANY($3::int[])
+  `;
+
+  parametros.push(
+    municipiosIdsNormalizados
+  );
+}
+
+
+sqlDados += `
+  ORDER BY m.nome ASC
+`;
+
+
+const dadosBrutos = await db.query(
+  sqlDados,
+  parametros
+);
 
     // 2. Pivotar os dados: Agrupar valores por município
     const dadosPorMunicipio = {};
