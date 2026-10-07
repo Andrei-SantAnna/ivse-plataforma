@@ -30,7 +30,7 @@ app.get('/api/health', async (req, res) => {
 app.use('/api/municipios', municipioRoutes);
 app.use('/api/topsis', topsisRoutes);
 app.use('/api/indicadores', indicadorRoutes);
-
+app.use('/api/dashboard', require('./routes/dashboard.routes'));
 
 app.listen(PORT, () => {
   console.log(`Servidor a executar na porta ${PORT}`);
