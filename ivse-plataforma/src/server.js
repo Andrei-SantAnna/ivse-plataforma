@@ -3,6 +3,8 @@ const cors = require('cors');
 const db = require('./config/database');
 const topsisRoutes = require('./routes/topsis.routes');
 const indicadorRoutes = require('./routes/indicador.routes');
+const authRoutes = require('./routes/auth.routes');
+
 // Importação das rotas
 const municipioRoutes = require('./routes/municipio.routes');
 
@@ -26,11 +28,12 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Registo das rotas da API
+// Registro das rotas da API
 app.use('/api/municipios', municipioRoutes);
 app.use('/api/topsis', topsisRoutes);
 app.use('/api/indicadores', indicadorRoutes);
 app.use('/api/dashboard', require('./routes/dashboard.routes'));
+app.use('/api/auth', authRoutes);
 
 app.listen(PORT, () => {
   console.log(`Servidor a executar na porta ${PORT}`);
