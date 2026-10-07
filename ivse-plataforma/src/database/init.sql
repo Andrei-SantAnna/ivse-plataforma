@@ -21,10 +21,31 @@ CREATE TABLE IF NOT EXISTS municipios (
 
 CREATE TABLE IF NOT EXISTS indicadores (
     id SERIAL PRIMARY KEY,
-    codigo VARCHAR(10) UNIQUE NOT NULL,
-    nome VARCHAR(255) NOT NULL,
+
+    codigo VARCHAR(10)
+        UNIQUE
+        NOT NULL,
+
+    nome VARCHAR(255)
+        NOT NULL,
+
     dimensao VARCHAR(100),
-    unidade_medida VARCHAR(50)
+
+    unidade_medida VARCHAR(50),
+
+    fonte VARCHAR(255),
+
+    formula TEXT,
+
+    descricao TEXT,
+
+    tipo_padrao VARCHAR(20)
+        CHECK (
+            tipo_padrao IN (
+                'beneficio',
+                'custo'
+            )
+        )
 );
 
 CREATE TABLE IF NOT EXISTS valores_indicadores (
