@@ -1,4 +1,4 @@
-# IVSE — Índice de Vulnerabilidade Social Energética
+# Projeto de análise IVSE — Índice de Vulnerabilidade Social Energética
 
 Plataforma web para análise multicritério da vulnerabilidade social energética de municípios da Bahia, utilizando o método **TOPSIS (Technique for Order Preference by Similarity to Ideal Solution)**.
 
