@@ -2,7 +2,7 @@
 
 Plataforma web para análise multicritério da vulnerabilidade social energética de municípios da Bahia, utilizando o método **TOPSIS (Technique for Order Preference by Similarity to Ideal Solution)**.
 
-O sistema permite cadastrar municípios e indicadores, associar valores aos municípios, configurar critérios e pesos, executar análises TOPSIS, gerar rankings e visualizar os resultados em mapa georreferenciado.
+O sistema permite cadastrar municípios e indicadores, associar valores aos municípios, configurar critérios e pesos, executar análises TOPSIS, calcular o IVSE, gerar rankings, comparar municípios, visualizar resultados em mapa georreferenciado, consultar o histórico de análises, importar dados em lote por CSV, gerar relatórios em PDF e controlar o acesso por autenticação e perfis de usuário.
 
 ---
 
@@ -137,6 +137,62 @@ Escala atualmente utilizada:
 
 > A interpretação final da escala deve permanecer coerente com a definição metodológica adotada para o IVSE e com a direção dos critérios utilizados.
 
+### Dashboard
+
+- status de conexão com o backend;
+- total de municípios cadastrados;
+- total de análises realizadas;
+- resumo da análise mais recente;
+- IVSE médio;
+- maior IVSE;
+- distribuição por faixa de vulnerabilidade;
+- municípios com maiores índices;
+- atalhos para mapa, comparação e nova simulação.
+
+### Comparação entre municípios
+
+- seleção de uma análise já executada;
+- pesquisa e seleção de municípios;
+- comparação do IVSE;
+- comparação da posição no ranking;
+- comparação das distâncias para as soluções ideais;
+- classificação visual do nível de vulnerabilidade.
+
+### Autenticação e perfis
+
+A plataforma utiliza autenticação baseada em **JWT (JSON Web Token)**.
+
+Perfis implementados:
+
+| Perfil | Permissões gerais |
+|---|---|
+| Administrador | Acesso completo ao sistema |
+| Pesquisador | Dashboard, mapa, municípios, indicadores, simulações, comparação e relatórios |
+| Gestor | Dashboard, mapa, comparação e relatórios |
+
+### Importação CSV
+
+A tela de indicadores permite importar valores em lote usando arquivo CSV com as colunas:
+
+```csv
+codigo_ibge,codigo_indicador,valor,ano_referencia
+2910800,TSEE_01,25.4,2026
+2905701,TSEE_01,31.7,2026
+```
+
+### Relatórios
+
+- seleção de análise concluída;
+- geração de relatório em PDF;
+- título, ano e data de execução;
+- quantidade de municípios analisados;
+- IVSE médio, maior e menor IVSE;
+- critérios, pesos e direção;
+- ranking;
+- código IBGE;
+- IVSE;
+- distâncias TOPSIS `D+` e `D-`.
+
 ---
 
 ##  Requisitos Funcionais
@@ -154,16 +210,16 @@ Escala atualmente utilizada:
 | RF09 | Executar TOPSIS | ✅ |
 | RF10 | Calcular índice dos municípios | ✅ |
 | RF11 | Gerar ranking | ✅ |
-| RF12 | Comparar municípios | 🚧 |
+| RF12 | Comparar municípios | ✅ |
 | RF13 | Mapa georreferenciado | ✅ |
-| RF14 | Dashboard de resultados | 🚧 |
+| RF14 | Dashboard de resultados | ✅ |
 | RF15 | Armazenar histórico | ✅ |
 | RF16 | Consultar análises anteriores | ✅ |
-| RF17 | Gerar relatórios | 🚧 |
-| RF18 | Validar dados antes do TOPSIS | 🚧 |
-| RF19 | Autenticação por login e senha | 🚧 |
-| RF20 | Controle de perfis de acesso | 🚧 |
-| RF21 | Importação em lote por CSV | 🚧 |
+| RF17 | Gerar relatórios | ✅ |
+| RF18 | Validar dados antes do TOPSIS | ✅ |
+| RF19 | Autenticação por login e senha | ✅ |
+| RF20 | Controle de perfis de acesso | ✅ |
+| RF21 | Importação em lote por CSV | ✅ |
 
 ---
 
@@ -210,6 +266,9 @@ Escala atualmente utilizada:
 - Tailwind CSS
 - Lucide React
 - Axios
+- React Router
+- jsPDF
+- jsPDF AutoTable
 
 ### Backend
 
@@ -219,6 +278,10 @@ Escala atualmente utilizada:
 - PostgreSQL
 - PostGIS
 - REST API
+- JSON Web Token (`jsonwebtoken`)
+- bcryptjs
+- Multer
+- csv-parser
 
 ### Infraestrutura
 
@@ -272,6 +335,20 @@ projeto/
 ##  Banco de dados
 
 Principais tabelas:
+
+### `usuarios`
+
+- `id`
+- `email`
+- `senha`
+- `perfil`
+- `criado_em`
+
+Perfis aceitos:
+
+- `administrador`
+- `pesquisador`
+- `gestor`
 
 ### `municipios`
 
@@ -343,6 +420,16 @@ POST /api/municipios
 GET /api/indicadores
 POST /api/indicadores
 POST /api/indicadores/valores
+POST /api/indicadores/importar-csv
+```
+
+### Autenticação
+
+```http
+POST /api/auth/login
+GET /api/auth/me
+GET /api/auth/usuarios
+POST /api/auth/usuarios
 ```
 
 ### TOPSIS
@@ -351,7 +438,20 @@ POST /api/indicadores/valores
 POST /api/topsis/simular
 POST /api/topsis/executar
 GET /api/topsis/analises
+GET /api/topsis/analises/:id/relatorio
 ```
+
+---
+
+## Portas utilizadas
+
+| Serviço | Porta |
+|---|---:|
+| Frontend Vite | `5173` |
+| API Node.js/Express | `3000` |
+| PostgreSQL | `5432` |
+
+> A porta `3000` pertence à API. A porta do PostgreSQL é `5432`.
 
 ---
 
@@ -380,13 +480,14 @@ Exemplo:
 
 ```env
 DB_HOST=db
-DB_PORT=3000
+DB_PORT=5432
 DB_NAME=ivse
 DB_USER=postgres
 DB_PASSWORD=postgres
+JWT_SECRET=gere_uma_chave_secreta_forte
 ```
 
-> Ajuste os valores conforme o `docker-compose.yml` do projeto. Neste projeto, a porta SQL configurada como padrão é `3000`.
+> Ajuste os valores conforme o `docker-compose.yml` do projeto. A API utiliza a porta `3000` e o PostgreSQL utiliza a porta `5432`.
 
 ### 3. Executar com Docker Compose
 
@@ -405,6 +506,34 @@ Para encerrar:
 ```bash
 docker compose down
 ```
+
+---
+
+## Autenticação
+
+Para utilizar as áreas protegidas da plataforma, é necessário possuir um usuário cadastrado.
+
+Fluxo simplificado:
+
+```text
+Tela de Login
+      ↓
+POST /api/auth/login
+      ↓
+Validação de e-mail e senha
+      ↓
+Geração do JWT
+      ↓
+Acesso às rotas protegidas
+```
+
+O token é enviado no cabeçalho:
+
+```http
+Authorization: Bearer TOKEN
+```
+
+> O arquivo `.env` não deve ser versionado e o valor real de `JWT_SECRET` nunca deve ser publicado no repositório.
 
 ---
 
@@ -484,7 +613,16 @@ Entre as validações atuais estão:
 - seleção mínima de municípios para análises específicas;
 - matriz TOPSIS compatível com a quantidade de pesos;
 - tratamento de divisão por zero na normalização;
-- validação de dados completos antes da execução.
+- validação de dados completos antes da execução;
+- mínimo de dois indicadores;
+- mínimo de dois municípios em análises específicas;
+- rejeição de pesos inválidos;
+- prevenção de indicadores duplicados;
+- verificação de IDs inexistentes;
+- rejeição de critérios sem variação;
+- validação da normalização;
+- validação do intervalo do IVSE;
+- verificação da integridade do ranking.
 
 ---
 
@@ -498,27 +636,29 @@ A suíte automatizada deverá contemplar:
 - testes de ranking;
 - testes de validação de entrada;
 - testes de integração da API;
-- testes de persistência das análises.
+- testes de persistência das análises;
+- testes de autenticação;
+- testes de autorização por perfil;
+- testes da importação CSV;
+- testes das validações do RF18.
 
-> Esta área será atualizada conforme a suíte automatizada for concluída.
+> A suíte automatizada ainda faz parte das etapas de validação final do projeto.
 
 ---
 
 ##  Próximas etapas
 
-Funcionalidades ainda em desenvolvimento:
+Os requisitos funcionais RF01 a RF21 estão implementados.
 
-- comparação dedicada entre municípios;
-- dashboard consolidado;
-- geração de relatórios;
-- validações adicionais;
-- autenticação;
-- perfis de acesso;
-- importação CSV;
+Próximas etapas acadêmicas e técnicas:
+
 - documentação Swagger/OpenAPI;
-- testes automatizados;
+- testes automatizados unitários e de integração;
 - diagramas UML;
-- manual do usuário.
+- manual do usuário;
+- revisão metodológica final do IVSE/TOPSIS;
+- apresentação final;
+- roteiro de demonstração ao vivo.
 
 ---
 
