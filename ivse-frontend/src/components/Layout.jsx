@@ -1,7 +1,8 @@
 import {
   Outlet,
   Link,
-  useLocation
+  useLocation,
+  useNavigate
 } from 'react-router-dom';
 
 import {
@@ -10,16 +11,69 @@ import {
   BarChart3,
   Settings,
   Activity,
-  GitCompareArrows
+  GitCompareArrows,
+  LogOut,
+  ShieldCheck,
+  User
 } from 'lucide-react';
+
+import {
+  useAuth
+} from '../context/AuthContext';
 
 
 export default function Layout() {
 
-  const location = useLocation();
+  const location =
+    useLocation();
+
+  const navigate =
+    useNavigate();
+
+  const {
+    usuario,
+    logout
+  } = useAuth();
 
 
-  const navItems = [
+  // ============================================================
+  // PERMISSÕES DOS PERFIS
+  // ============================================================
+
+  const permissoes = {
+
+    administrador: [
+      '/',
+      '/mapa',
+      '/municipios',
+      '/indicadores',
+      '/simulacao',
+      '/comparacao'
+    ],
+
+    pesquisador: [
+      '/',
+      '/mapa',
+      '/municipios',
+      '/indicadores',
+      '/simulacao',
+      '/comparacao'
+    ],
+
+    gestor: [
+      '/',
+      '/mapa',
+      '/comparacao'
+    ]
+
+  };
+
+
+  // ============================================================
+  // ITENS DO MENU
+  // ============================================================
+
+  const todosNavItems = [
 
     {
       name: 'Dashboard',
@@ -60,6 +114,57 @@ export default function Layout() {
   ];
 
 
+  const caminhosPermitidos =
+    permissoes[
+      usuario?.perfil
+    ] || [];
+
+
+  const navItems =
+    todosNavItems.filter(
+      item =>
+        caminhosPermitidos.includes(
+          item.path
+        )
+    );
+
+
+  // ============================================================
+  // FORMATAR PERFIL
+  // ============================================================
+
+  const nomePerfil = {
+
+    administrador:
+      'Administrador',
+
+    pesquisador:
+      'Pesquisador',
+
+    gestor:
+      'Gestor'
+
+  };
+
+
+  // ============================================================
+  // LOGOUT
+  // ============================================================
+
+  const sair = () => {
+
+    logout();
+
+    navigate(
+      '/login',
+      {
+        replace: true
+      }
+    );
+
+  };
+
+
   return (
 
     <div
@@ -71,7 +176,9 @@ export default function Layout() {
       "
     >
 
+      {/* ====================================================== */}
       {/* SIDEBAR */}
+      {/* ====================================================== */}
 
       <aside
         className="
@@ -83,7 +190,15 @@ export default function Layout() {
         "
       >
 
-        <div className="p-6">
+        {/* LOGO / TÍTULO */}
+
+        <div
+          className="
+            p-6
+            border-b
+            border-slate-800
+          "
+        >
 
           <h1
             className="
@@ -94,6 +209,7 @@ export default function Layout() {
           >
             Plataforma IVSE
           </h1>
+
 
           <p
             className="
@@ -108,12 +224,122 @@ export default function Layout() {
         </div>
 
 
+        {/* ==================================================== */}
+        {/* USUÁRIO LOGADO */}
+        {/* ==================================================== */}
+
+        <div
+          className="
+            px-4
+            py-4
+            border-b
+            border-slate-800
+          "
+        >
+
+          <div
+            className="
+              bg-slate-800
+              rounded-lg
+              p-3
+            "
+          >
+
+            <div
+              className="
+                flex
+                items-center
+                gap-3
+              "
+            >
+
+              <div
+                className="
+                  w-10
+                  h-10
+                  rounded-full
+                  bg-blue-600
+                  flex
+                  items-center
+                  justify-center
+                "
+              >
+
+                <User
+                  size={20}
+                />
+
+              </div>
+
+
+              <div
+                className="
+                  min-w-0
+                  flex-1
+                "
+              >
+
+                <p
+                  className="
+                    text-sm
+                    font-medium
+                    text-white
+                    truncate
+                  "
+                >
+                  {usuario?.email}
+                </p>
+
+
+                <div
+                  className="
+                    flex
+                    items-center
+                    gap-1
+                    mt-1
+                    text-xs
+                    text-slate-400
+                  "
+                >
+
+                  <ShieldCheck
+                    size={13}
+                  />
+
+
+                  <span>
+
+                    {
+                      nomePerfil[
+                        usuario?.perfil
+                      ] ||
+                      usuario?.perfil
+                    }
+
+                  </span>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        {/* ==================================================== */}
+        {/* MENU */}
+        {/* ==================================================== */}
+
         <nav
           className="
             flex-1
             px-4
             space-y-2
             mt-4
+            overflow-y-auto
           "
         >
 
@@ -121,16 +347,21 @@ export default function Layout() {
             item => {
 
               const isActive =
-                location.pathname === item.path;
+                location.pathname ===
+                item.path;
 
 
               return (
 
                 <Link
 
-                  key={item.name}
+                  key={
+                    item.name
+                  }
 
-                  to={item.path}
+                  to={
+                    item.path
+                  }
 
                   className={`
                     flex
@@ -153,7 +384,12 @@ export default function Layout() {
 
                   {item.icon}
 
-                  <span className="font-medium">
+
+                  <span
+                    className="
+                      font-medium
+                    "
+                  >
                     {item.name}
                   </span>
 
@@ -166,10 +402,63 @@ export default function Layout() {
 
         </nav>
 
+
+        {/* ==================================================== */}
+        {/* LOGOUT */}
+        {/* ==================================================== */}
+
+        <div
+          className="
+            p-4
+            border-t
+            border-slate-800
+          "
+        >
+
+          <button
+
+            onClick={
+              sair
+            }
+
+            className="
+              w-full
+              flex
+              items-center
+              gap-3
+              px-4
+              py-3
+              rounded-lg
+              text-slate-300
+              hover:bg-red-600
+              hover:text-white
+              transition-colors
+            "
+          >
+
+            <LogOut
+              size={20}
+            />
+
+
+            <span
+              className="
+                font-medium
+              "
+            >
+              Sair
+            </span>
+
+          </button>
+
+        </div>
+
       </aside>
 
 
+      {/* ====================================================== */}
       {/* CONTEÚDO */}
+      {/* ====================================================== */}
 
       <main
         className="
@@ -178,12 +467,18 @@ export default function Layout() {
         "
       >
 
+        {/* HEADER */}
+
         <header
           className="
             bg-white
             shadow-sm
             px-8
             py-4
+            flex
+            items-center
+            justify-between
+            gap-4
           "
         >
 
@@ -196,7 +491,7 @@ export default function Layout() {
           >
 
             {
-              navItems.find(
+              todosNavItems.find(
                 item =>
                   item.path ===
                   location.pathname
@@ -206,10 +501,54 @@ export default function Layout() {
 
           </h2>
 
+
+          <div
+            className="
+              text-right
+              hidden
+              md:block
+            "
+          >
+
+            <p
+              className="
+                text-sm
+                font-medium
+                text-gray-700
+              "
+            >
+              {usuario?.email}
+            </p>
+
+
+            <p
+              className="
+                text-xs
+                text-gray-400
+              "
+            >
+
+              {
+                nomePerfil[
+                  usuario?.perfil
+                ] ||
+                usuario?.perfil
+              }
+
+            </p>
+
+          </div>
+
         </header>
 
 
-        <div className="p-8">
+        {/* PÁGINAS */}
+
+        <div
+          className="
+            p-8
+          "
+        >
 
           <Outlet />
 

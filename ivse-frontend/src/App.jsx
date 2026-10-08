@@ -1,6 +1,15 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import {
+  BrowserRouter,
+  Routes,
+  Route
+} from 'react-router-dom';
 
 import Layout from './components/Layout';
+import ProtectedRoute from './components/ProtectedRoute';
+
+import {
+  AuthProvider
+} from './context/AuthContext';
 
 import Dashboard from './pages/Dashboard';
 import Simulacao from './pages/simulacao';
@@ -8,6 +17,7 @@ import Municipios from './pages/Municipios';
 import Indicadores from './pages/Indicadores';
 import Mapa from './pages/Mapa';
 import Comparacao from './pages/Comparacao';
+import Login from './pages/Login';
 
 
 export default function App() {
@@ -16,46 +26,89 @@ export default function App() {
 
     <BrowserRouter>
 
-      <Routes>
+      <AuthProvider>
 
-        <Route
-          path="/"
-          element={<Layout />}
-        >
+        <Routes>
 
-          <Route
-            index
-            element={<Dashboard />}
-          />
+
+          {/* LOGIN */}
 
           <Route
-            path="mapa"
-            element={<Mapa />}
+            path="/login"
+            element={
+              <Login />
+            }
           />
+
+
+          {/* SISTEMA PROTEGIDO */}
 
           <Route
-            path="municipios"
-            element={<Municipios />}
-          />
+            path="/"
+            element={
 
-          <Route
-            path="indicadores"
-            element={<Indicadores />}
-          />
+              <ProtectedRoute>
 
-          <Route
-            path="simulacao"
-            element={<Simulacao />}
-          />
+                <Layout />
 
-          <Route
-            path="comparacao"
-            element={<Comparacao />}
-          />
+              </ProtectedRoute>
 
-        </Route>
+            }
+          >
 
-      </Routes>
+            <Route
+              index
+              element={
+                <Dashboard />
+              }
+            />
+
+
+            <Route
+              path="mapa"
+              element={
+                <Mapa />
+              }
+            />
+
+
+            <Route
+              path="municipios"
+              element={
+                <Municipios />
+              }
+            />
+
+
+            <Route
+              path="indicadores"
+              element={
+                <Indicadores />
+              }
+            />
+
+
+            <Route
+              path="simulacao"
+              element={
+                <Simulacao />
+              }
+            />
+
+
+            <Route
+              path="comparacao"
+              element={
+                <Comparacao />
+              }
+            />
+
+          </Route>
+
+
+        </Routes>
+
+      </AuthProvider>
 
     </BrowserRouter>
 
