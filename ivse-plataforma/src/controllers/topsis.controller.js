@@ -1030,3 +1030,252 @@ exports.listarAnalises = async (req, res) => {
   }
 
 };
+
+exports.obterRelatorio = async (req, res) => {
+
+  const analiseId =
+    Number(req.params.id);
+
+
+  try {
+
+    // ============================================================
+    // VALIDAR ID
+    // ============================================================
+
+    if (
+      !Number.isInteger(analiseId) ||
+      analiseId <= 0
+    ) {
+
+      return res.status(400).json({
+        erro:
+          'ID da análise inválido.'
+      });
+
+    }
+
+
+    // ============================================================
+    // BUSCAR ANÁLISE
+    // ============================================================
+
+    const analiseResult =
+      await db.query(
+        `
+        SELECT
+          a.id,
+          a.titulo,
+          a.ano_referencia,
+          a.data_execucao,
+          a.status,
+          a.usuario_id,
+
+          u.email AS usuario_email
+
+        FROM analises a
+
+        LEFT JOIN usuarios u
+          ON u.id = a.usuario_id
+
+        WHERE a.id = $1
+        `,
+        [
+          analiseId
+        ]
+      );
+
+
+    if (
+      analiseResult.rows.length === 0
+    ) {
+
+      return res.status(404).json({
+        erro:
+          'Análise não encontrada.'
+      });
+
+    }
+
+
+    const analise =
+      analiseResult.rows[0];
+
+
+    // ============================================================
+    // BUSCAR CRITÉRIOS
+    // ============================================================
+
+    const criteriosResult =
+      await db.query(
+        `
+        SELECT
+          ca.indicador_id,
+          i.codigo,
+          i.nome,
+          i.dimensao,
+          i.unidade_medida,
+          ca.peso,
+          ca.tipo_direcao
+
+        FROM criterios_analise ca
+
+        JOIN indicadores i
+          ON i.id = ca.indicador_id
+
+        WHERE ca.analise_id = $1
+
+        ORDER BY i.codigo
+        `,
+        [
+          analiseId
+        ]
+      );
+
+
+    // ============================================================
+    // BUSCAR RESULTADOS
+    // ============================================================
+
+    const resultadosResult =
+      await db.query(
+        `
+        SELECT
+          rt.municipio_id,
+          m.codigo_ibge,
+          m.nome,
+          m.uf,
+
+          rt.ivse_score,
+          rt.dist_ideal_positiva,
+          rt.dist_ideal_negativa,
+          rt.posicao_ranking
+
+        FROM resultados_topsis rt
+
+        JOIN municipios m
+          ON m.id = rt.municipio_id
+
+        WHERE rt.analise_id = $1
+
+        ORDER BY
+          rt.posicao_ranking ASC
+        `,
+        [
+          analiseId
+        ]
+      );
+
+
+    const resultados =
+      resultadosResult.rows;
+
+
+    // ============================================================
+    // ESTATÍSTICAS
+    // ============================================================
+
+    let ivseMedio = 0;
+
+    let maiorIVSE = null;
+
+    let menorIVSE = null;
+
+
+    if (
+      resultados.length > 0
+    ) {
+
+      const valores =
+        resultados.map(
+          item =>
+            Number(
+              item.ivse_score
+            )
+        );
+
+
+      const soma =
+        valores.reduce(
+          (total, valor) =>
+            total + valor,
+          0
+        );
+
+
+      ivseMedio =
+        soma /
+        valores.length;
+
+
+      maiorIVSE =
+        Math.max(
+          ...valores
+        );
+
+
+      menorIVSE =
+        Math.min(
+          ...valores
+        );
+
+    }
+
+
+    // ============================================================
+    // RESPOSTA
+    // ============================================================
+
+    return res.status(200).json({
+
+      analise: {
+
+        ...analise,
+
+        total_municipios:
+          resultados.length
+
+      },
+
+      criterios:
+        criteriosResult.rows,
+
+      estatisticas: {
+
+        ivse_medio:
+          ivseMedio,
+
+        maior_ivse:
+          maiorIVSE,
+
+        menor_ivse:
+          menorIVSE
+
+      },
+
+      resultados
+
+    });
+
+
+  } catch (erro) {
+
+    console.error(
+      'Erro ao gerar dados do relatório:',
+      erro
+    );
+
+
+    return res.status(500).json({
+
+      erro:
+        'Erro interno ao gerar o relatório.',
+
+      detalhe:
+        erro.message
+
+    });
+
+  }
+
+};

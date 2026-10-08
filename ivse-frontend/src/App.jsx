@@ -18,6 +18,7 @@ import Indicadores from './pages/Indicadores';
 import Mapa from './pages/Mapa';
 import Comparacao from './pages/Comparacao';
 import Login from './pages/Login';
+import Relatorios from './pages/Relatorios';
 
 
 export default function App() {
@@ -95,6 +96,10 @@ export default function App() {
               }
             />
 
+            <Route
+              path="relatorios"
+              element={<Relatorios />}
+            />
 
             <Route
               path="comparacao"

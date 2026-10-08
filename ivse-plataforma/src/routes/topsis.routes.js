@@ -28,5 +28,9 @@ router.get(
   topsisController.listarAnalises
 );
 
+router.get(
+  '/analises/:id/relatorio',
+  topsisController.obterRelatorio
+);
 
 module.exports = router;

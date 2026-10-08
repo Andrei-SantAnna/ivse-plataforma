@@ -14,7 +14,8 @@ import {
   GitCompareArrows,
   LogOut,
   ShieldCheck,
-  User
+  User,
+  FileText
 } from 'lucide-react';
 
 import {
@@ -48,7 +49,8 @@ export default function Layout() {
       '/municipios',
       '/indicadores',
       '/simulacao',
-      '/comparacao'
+      '/comparacao',
+      '/relatorios'
     ],
 
     pesquisador: [
@@ -57,13 +59,15 @@ export default function Layout() {
       '/municipios',
       '/indicadores',
       '/simulacao',
-      '/comparacao'
+      '/comparacao',
+      '/relatorios'
     ],
 
     gestor: [
       '/',
       '/mapa',
-      '/comparacao'
+      '/comparacao',
+      '/relatorios'
     ]
 
   };
@@ -109,6 +113,12 @@ export default function Layout() {
       name: 'Comparação',
       path: '/comparacao',
       icon: <GitCompareArrows size={20} />
+    },
+
+    {
+      name: 'Relatórios',
+      path: '/relatorios',
+      icon: <FileText size={20} />
     }
 
   ];
