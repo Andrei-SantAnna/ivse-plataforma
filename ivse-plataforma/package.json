@@ -7,7 +7,8 @@
     "start": "node src/server.js",
     "migrate": "node src/database/runMigrations.js",
     "test:unit": "jest tests/unit --runInBand",
-    "test:integration": "jest tests/integration --runInBand"
+    "test:integration": "jest tests/integration --runInBand",
+    "test:performance": "jest tests/performance --runInBand"
   },
   "keywords": [],
   "author": "",
