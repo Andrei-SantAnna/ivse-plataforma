@@ -38,7 +38,29 @@ app.use('/api/indicadores', indicadorRoutes);
 app.use('/api/dashboard', require('./routes/dashboard.routes'));
 app.use('/api/auth', authRoutes);
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok'
+  });
+});
 
 app.listen(PORT, () => {
   console.log(`Servidor a executar na porta ${PORT}`);
 });
+if (require.main === module) {
+
+  const PORT =
+    process.env.PORT || 3000;
+
+  app.listen(
+    PORT,
+    () => {
+      console.log(
+        `Servidor a executar na porta ${PORT}`
+      );
+    }
+  );
+
+}
+
+module.exports = app;
