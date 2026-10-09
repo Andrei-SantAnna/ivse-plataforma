@@ -1,5 +1,5 @@
 # Projeto de análise IVSE — Índice de Vulnerabilidade Social Energética
-
+## Desenvolvido por Andrei Boulhosa de Sant'Anna
 Plataforma web para análise multicritério da vulnerabilidade social energética de municípios da Bahia, utilizando o método **TOPSIS (Technique for Order Preference by Similarity to Ideal Solution)**.
 
 O sistema permite cadastrar municípios e indicadores, associar valores aos municípios, configurar critérios e pesos, executar análises TOPSIS, calcular o IVSE, gerar rankings, comparar municípios, visualizar resultados em mapa georreferenciado, consultar o histórico de análises, importar dados em lote por CSV, gerar relatórios em PDF e controlar o acesso por autenticação e perfis de usuário.
